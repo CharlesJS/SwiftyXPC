@@ -4,6 +4,7 @@ public enum XPCError: Error {
     case connectionInterrupted
     case connectionInvalid
     case terminationImminent
+    case invalidCodeSignatureRequirement
     case unknown
 
     internal init(error: xpc_object_t) {

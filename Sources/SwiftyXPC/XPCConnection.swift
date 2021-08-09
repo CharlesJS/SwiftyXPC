@@ -47,6 +47,28 @@ public class XPCConnection {
     public var messageHandler: MessageHandler? = nil
     public var errorHandler: ErrorHandler? = nil
 
+    public var auditSessionIdentifier: au_asid_t {
+        xpc_connection_get_asid(self.connection)
+    }
+
+    public var effectiveGroupIdentifier: gid_t {
+        xpc_connection_get_egid(self.connection)
+    }
+
+    public var effectiveUserIdentifier: uid_t {
+        xpc_connection_get_euid(self.connection)
+    }
+
+    public var processIdentifier: pid_t {
+        xpc_connection_get_pid(self.connection)
+    }
+
+    public func setCodeSigningRequirement(_ requirement: String) throws {
+        guard xpc_connection_set_peer_code_signing_requirement(self.connection, requirement) == 0 else {
+            throw XPCError.invalidCodeSignatureRequirement
+        }
+    }
+
     public func activate() {
         xpc_connection_activate(self.connection)
     }
@@ -84,6 +106,10 @@ public class XPCConnection {
     private func sendOnewayMessage(_ message: [String : Any], asReplyTo original: xpc_object_t?) throws {
         guard let xpcMessage = message.toXPCObject(replyTo: original) else { throw Errno.invalidArgument }
         xpc_connection_send_message(self.connection, xpcMessage)
+    }
+
+    public func sendBarrier(_ barrier: @escaping () -> ()) {
+        xpc_connection_send_barrier(self.connection, barrier)
     }
 
     private func handleEvent(_ event: xpc_object_t) {
