@@ -10,11 +10,11 @@ import XPC
 public struct XPCEndpoint: XPCConvertible {
     private let endpoint: xpc_endpoint_t
 
-    public init(connection: xpc_connection_t) {
+    internal init(connection: xpc_connection_t) {
         self.endpoint = xpc_endpoint_create(connection)
     }
 
-    public func createConnection() -> xpc_connection_t {
+    internal func makeConnection() -> xpc_connection_t {
         xpc_connection_create_from_endpoint(self.endpoint)
     }
 

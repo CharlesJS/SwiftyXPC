@@ -22,6 +22,15 @@ public final class XPCListener {
     public let type: ListenerType
     private let backing: Backing
 
+    public var endpoint: XPCEndpoint {
+        switch self.backing {
+        case .xpcMain:
+            fatalError("Can't get endpoint for main service listener")
+        case .connection(let connection):
+            return connection.makeEndpoint()
+        }
+    }
+
     // because xpc_main takes a C function that can't capture any context, we need to store these globally
     private static var globalMessageHandler: XPCConnection.MessageHandler? = nil
     private static var globalErrorHandler: XPCConnection.ErrorHandler? = nil

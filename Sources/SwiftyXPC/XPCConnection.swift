@@ -8,6 +8,7 @@ public class XPCConnection {
     public enum ConnectionType {
         case anonymousListener
         case remoteService(bundleID: String)
+        case remoteServiceFromEndpoint(XPCEndpoint)
         case remoteMachService(serviceName: String, isPrivilegedHelperTool: Bool)
     }
 
@@ -26,6 +27,8 @@ public class XPCConnection {
             self.init(connection: xpc_connection_create(nil, nil))
         case .remoteService(let bundleID):
             self.init(connection: xpc_connection_create(bundleID, nil))
+        case .remoteServiceFromEndpoint(let endpoint):
+            self.init(connection: endpoint.makeConnection())
         case .remoteMachService(serviceName: let name, isPrivilegedHelperTool: let isPrivileged):
             let flags: Int32 = isPrivileged ? XPC_CONNECTION_MACH_SERVICE_PRIVILEGED : 0
             self.init(machServiceName: name, flags: flags)
@@ -85,15 +88,28 @@ public class XPCConnection {
         xpc_connection_cancel(self.connection)
     }
 
+    internal func makeEndpoint() -> XPCEndpoint {
+        XPCEndpoint(connection: self.connection)
+    }
+
     public func sendMessage(_ request: [String : Any]) async throws -> [String : Any] {
         guard let xpcRequest = request.toXPCObject() else { throw Errno.invalidArgument }
 
         return try await withCheckedThrowingContinuation { continuation in
             xpc_connection_send_message_with_reply(self.connection, xpcRequest, nil) { event in
-                if xpc_get_type(event) == XPC_TYPE_DICTIONARY, let reply = [String : Any].fromXPCObject(event) {
-                    continuation.resume(returning: reply)
-                } else {
-                    continuation.resume(throwing: XPCError(error: event))
+                do {
+                    guard xpc_get_type(event) == XPC_TYPE_DICTIONARY,
+                          let reply = [String : Any].fromXPCObject(event) else {
+                              throw XPCError(error: event)
+                    }
+
+                    guard let response = reply[Self.responseKey] as? [String : Any] else {
+                        throw reply[Self.errorKey] as? Error ?? Errno.invalidArgument
+                    }
+
+                    continuation.resume(returning: response)
+                } catch {
+                    continuation.resume(throwing: error)
                 }
             }
         }
