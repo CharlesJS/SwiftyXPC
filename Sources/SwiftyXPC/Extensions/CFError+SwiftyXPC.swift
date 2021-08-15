@@ -61,19 +61,4 @@ extension CFError: XPCConvertible {
             unsafeBitCast(userInfo as AnyObject, to: CFDictionary?.self)
         ).map { unsafeDowncast($0, to: self) }
     }
-
-    public func toXPCObject() -> xpc_object_t? {
-        guard let domain = CFErrorGetDomain(self)?.toString() else { return nil }
-
-        var dict: [String : XPCConvertible] = [
-            EncodingKeys.domain: domain,
-            EncodingKeys.code: Int64(CFErrorGetCode(self))
-        ]
-
-        if let userInfo = CFErrorCopyUserInfo(self) {
-            dict[EncodingKeys.userInfo] = userInfo
-        }
-
-        return [EncodingKeys.dictionaryKey: dict].toXPCObject()
-    }
 }
