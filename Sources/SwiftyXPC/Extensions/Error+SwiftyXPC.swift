@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  File
+//  Error+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  Created by Charles Srstka on 8/15/21.
 //
