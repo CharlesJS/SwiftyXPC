@@ -15,6 +15,23 @@ extension CFError: Error {
     public var _domain: String { CFErrorGetDomain(self).toString() }
     public var _code: Int { Int(CFErrorGetCode(self)) }
     public var _userInfo: AnyObject? { CFErrorCopyUserInfo(self) }
+
+    public static func make(_ status: OSStatus) -> CFError {
+        let domain: CFString
+        let code: CFIndex
+
+        let posixErrorBase: OSStatus = 100000
+
+        if (posixErrorBase..<(posixErrorBase + 1000)).contains(status) {
+            domain = CFString.fromString("NSPOSIXErrorDomain")
+            code = CFIndex(status - posixErrorBase)
+        } else {
+            domain = CFString.fromString("NSOSStatusErrorDomain")
+            code = CFIndex(status)
+        }
+
+        return CFErrorCreate(kCFAllocatorDefault, domain, code, nil)
+    }
 }
 
 extension CFError: XPCConvertible {
