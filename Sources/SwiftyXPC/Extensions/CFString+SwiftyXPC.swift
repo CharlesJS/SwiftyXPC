@@ -1,6 +1,6 @@
 //
-//  CFString+CSAuthSample.swift
-//  CSAuthSampleCommon
+//  CFString+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  Some helper methods to facilitate working with CFStrings without requiring your tool to link against Foundation.
 //

@@ -1,6 +1,6 @@
 //
-//  CFNumber+CSAuthSample.swift
-//  CSAuthSampleCommon
+//  CFNumber+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  Created by Charles Srstka on 7/22/21.
 //

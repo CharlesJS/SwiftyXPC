@@ -1,6 +1,6 @@
 //
-//  Bool+CSAuthSample.swift
-//  CSAuthSampleCommon
+//  Bool+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  Created by Charles Srstka on 7/29/21.
 //

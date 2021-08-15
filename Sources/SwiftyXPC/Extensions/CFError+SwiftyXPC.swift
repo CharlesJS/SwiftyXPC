@@ -1,6 +1,6 @@
 //
-//  CFError+CSAuthSample.swift
-//  CSAuthSampleCommon
+//  CFError+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  An extension to give CFError conformance to the Error protocol
 //  without requiring your tool to link against Foundation.
@@ -36,11 +36,11 @@ extension CFError: Error {
 
 extension CFError: XPCConvertible {
     struct EncodingKeys {
-        static let dictionaryKey = "com.charlessoft.CSAuthSample.CFDictionaryEncodingKeys.error"
+        static let dictionaryKey = "com.charlessoft.SwiftyXPC.CFDictionaryEncodingKeys.error"
 
-        static let domain = "com.charlessoft.CSAuthSample.error.domain"
-        static let code = "com.charlessoft.CSAuthSample.error.code"
-        static let userInfo = "com.charlessoft.CSAuthSample.error.userInfo"
+        static let domain = "com.charlessoft.SwiftyXPC.error.domain"
+        static let code = "com.charlessoft.SwiftyXPC.error.code"
+        static let userInfo = "com.charlessoft.SwiftyXPC.error.userInfo"
     }
 
     static func isXPCEncodedError(_ object: xpc_object_t) -> Bool {

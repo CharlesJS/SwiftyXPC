@@ -1,6 +1,6 @@
 //
-//  Dictionary+CSAuthSample.swift
-//  CSAuthSampleCommon
+//  Dictionary+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  Created by Charles Srstka on 7/30/21.
 //

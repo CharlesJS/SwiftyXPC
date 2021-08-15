@@ -1,6 +1,6 @@
 //
-//  CFUUID+CSAuthSample.swift
-//  CSAuthSampleCommon
+//  CFUUID+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  Created by Charles Srstka on 7/22/21.
 //

@@ -1,6 +1,6 @@
 //
-//  CFURL+CSAuthSample.swift
-//  CSAuthSampleCommon
+//  CFURL+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  Created by Charles Srstka on 7/22/21.
 //
@@ -9,7 +9,7 @@ import CoreFoundation
 import XPC
 
 extension CFURL: XPCConvertible {
-    private static let dictionaryKey = "com.charlessoft.CSAuthSample.CFDictionaryEncodingKeys.url"
+    private static let dictionaryKey = "com.charlessoft.SwiftyXPC.CFDictionaryEncodingKeys.url"
 
     static func isXPCEncodedURL(_ object: xpc_object_t) -> Bool {
         xpc_dictionary_get_value(object, Self.dictionaryKey) != nil

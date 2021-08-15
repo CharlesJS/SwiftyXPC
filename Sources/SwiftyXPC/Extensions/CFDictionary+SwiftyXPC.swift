@@ -1,6 +1,6 @@
 //
-//  CFDictionary+CSAuthSample.swift
-//  CSAuthSampleCommon
+//  CFDictionary+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  Created by Charles Srstka on 7/22/21.
 //

@@ -1,6 +1,6 @@
 //
-//  String+CSAuthSample.swift
-//  CSAuthSampleCommon
+//  String+SwiftyXPC.swift
+//  SwiftyXPC
 //
 //  Created by Charles Srstka on 7/29/21.
 //
