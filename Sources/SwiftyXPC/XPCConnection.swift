@@ -12,8 +12,8 @@ public class XPCConnection {
         case remoteMachService(serviceName: String, isPrivilegedHelperTool: Bool)
     }
 
-    public typealias MessageHandler = ([String : Any]) async throws -> [String : Any]
-    public typealias ErrorHandler = (Error) -> ()
+    public typealias MessageHandler = (XPCConnection, [String : Any]) async throws -> [String : Any]
+    public typealias ErrorHandler = (XPCConnection, Error) -> ()
 
     private let connection: xpc_connection_t
 
@@ -132,17 +132,17 @@ public class XPCConnection {
         let type = xpc_get_type(event)
 
         guard type == XPC_TYPE_DICTIONARY, let message = [String : Any].fromXPCObject(event) else {
-            self.errorHandler?(type == XPC_TYPE_ERROR ? XPCError(error: event) : Errno.badFileTypeOrFormat)
+            self.errorHandler?(self, type == XPC_TYPE_ERROR ? XPCError(error: event) : Errno.badFileTypeOrFormat)
             return
         }
 
         Task {
             do {
-                if let response = try await self.messageHandler?(message) {
+                if let response = try await self.messageHandler?(self, message) {
                     do {
                         try self.sendOnewayMessage([Self.responseKey : response], asReplyTo: event)
                     } catch {
-                        self.errorHandler?(error)
+                        self.errorHandler?(self, error)
                     }
                 }
             } catch {
