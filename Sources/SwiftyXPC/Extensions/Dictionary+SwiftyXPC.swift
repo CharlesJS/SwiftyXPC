@@ -5,7 +5,16 @@
 //  Created by Charles Srstka on 7/30/21.
 //
 
+import CoreFoundation
 import XPC
+
+extension Dictionary {
+    public subscript<T: CFTypeRef>(key: Key, as typeID: CFTypeID) -> T? {
+        guard let value = self[key] as AnyObject?, CFGetTypeID(value) == typeID else { return nil }
+
+        return value as? T
+    }
+}
 
 extension Dictionary: XPCConvertible where Key: StringProtocol {
     public static func fromXPCObject(_ xpcObject: xpc_object_t) -> Dictionary<Key, Value>? {
