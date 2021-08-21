@@ -6,6 +6,7 @@
 //
 
 import XPC
+import os
 
 public final class XPCListener {
     public enum ListenerType {
@@ -34,6 +35,7 @@ public final class XPCListener {
     // because xpc_main takes a C function that can't capture any context, we need to store these globally
     private static var globalMessageHandler: XPCConnection.MessageHandler? = nil
     private static var globalErrorHandler: XPCConnection.ErrorHandler? = nil
+    private static var globalCodeSigningRequirement: String? = nil
 
     public var messageHandler: XPCConnection.MessageHandler? {
         get {
@@ -73,17 +75,25 @@ public final class XPCListener {
         }
     }
 
-    public init(type: ListenerType) {
+    public init(type: ListenerType, codeSigningRequirement requirement: String?) throws {
         self.type = type
 
         switch type {
         case .anonymous:
-            self.backing = .connection(XPCConnection.makeAnonymousListenerConnection())
+            self.backing = .connection(
+                try XPCConnection.makeAnonymousListenerConnection(codeSigningRequirement: requirement)
+            )
         case .service:
             self.backing = .xpcMain
+            Self.globalCodeSigningRequirement = requirement
         case .machService(name: let name):
-            let connection = XPCConnection(machServiceName: name, flags: XPC_CONNECTION_MACH_SERVICE_LISTENER)
-            self.backing = .connection(connection)
+            self.backing = .connection(
+                try XPCConnection(
+                    machServiceName: name,
+                    flags: XPC_CONNECTION_MACH_SERVICE_LISTENER,
+                    codeSigningRequirement: requirement
+                )
+            )
         }
     }
 
@@ -100,12 +110,19 @@ public final class XPCListener {
         switch self.backing {
         case .xpcMain:
             xpc_main {
-                let connection = XPCConnection(connection: $0)
+                do {
+                    let connection = try XPCConnection(
+                        connection: $0,
+                        codeSigningRequirement: XPCListener.globalCodeSigningRequirement
+                    )
 
-                connection.messageHandler = XPCListener.globalMessageHandler
-                connection.errorHandler = XPCListener.globalErrorHandler
+                    connection.messageHandler = XPCListener.globalMessageHandler
+                    connection.errorHandler = XPCListener.globalErrorHandler
 
-                connection.activate()
+                    connection.activate()
+                } catch {
+                    os.Logger().critical("Can’t initialize incoming XPC connection!")
+                }
             }
         case .connection(let connection):
             connection.activate()

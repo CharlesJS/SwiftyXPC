@@ -17,32 +17,38 @@ public class XPCConnection {
 
     private let connection: xpc_connection_t
 
-    internal static func makeAnonymousListenerConnection() -> XPCConnection {
-        .init(connection: xpc_connection_create(nil, nil))
+    internal static func makeAnonymousListenerConnection(codeSigningRequirement: String?) throws -> XPCConnection {
+        try .init(connection: xpc_connection_create(nil, nil), codeSigningRequirement: codeSigningRequirement)
     }
 
-    public convenience init(type: ConnectionType) {
+    public convenience init(type: ConnectionType, codeSigningRequirement requirement: String? = nil) throws {
         switch type {
         case .anonymousListener:
-            self.init(connection: xpc_connection_create(nil, nil))
+            try self.init(connection: xpc_connection_create(nil, nil), codeSigningRequirement: requirement)
         case .remoteService(let bundleID):
-            self.init(connection: xpc_connection_create(bundleID, nil))
+            try self.init(connection: xpc_connection_create(bundleID, nil), codeSigningRequirement: requirement)
         case .remoteServiceFromEndpoint(let endpoint):
-            self.init(connection: endpoint.makeConnection())
+            try self.init(connection: endpoint.makeConnection(), codeSigningRequirement: requirement)
         case .remoteMachService(serviceName: let name, isPrivilegedHelperTool: let isPrivileged):
             let flags: Int32 = isPrivileged ? XPC_CONNECTION_MACH_SERVICE_PRIVILEGED : 0
-            self.init(machServiceName: name, flags: flags)
+            try self.init(machServiceName: name, flags: flags, codeSigningRequirement: requirement)
         }
     }
 
-    internal convenience init(machServiceName: String, flags: Int32) {
+    internal convenience init(machServiceName: String, flags: Int32, codeSigningRequirement: String? = nil) throws {
         let connection = xpc_connection_create_mach_service(machServiceName, nil, UInt64(flags))
 
-        self.init(connection: connection)
+        try self.init(connection: connection, codeSigningRequirement: codeSigningRequirement)
     }
 
-    internal init(connection: xpc_connection_t) {
+    internal init(connection: xpc_connection_t, codeSigningRequirement: String?) throws {
         self.connection = connection
+
+        if let requirement = codeSigningRequirement {
+            guard xpc_connection_set_peer_code_signing_requirement(self.connection, requirement) == 0 else {
+                throw XPCError.invalidCodeSignatureRequirement
+            }
+        }
 
         xpc_connection_set_event_handler(self.connection, self.handleEvent)
     }
@@ -64,12 +70,6 @@ public class XPCConnection {
 
     public var processIdentifier: pid_t {
         xpc_connection_get_pid(self.connection)
-    }
-
-    public func setCodeSigningRequirement(_ requirement: String) throws {
-        guard xpc_connection_set_peer_code_signing_requirement(self.connection, requirement) == 0 else {
-            throw XPCError.invalidCodeSignatureRequirement
-        }
     }
 
     public func activate() {
