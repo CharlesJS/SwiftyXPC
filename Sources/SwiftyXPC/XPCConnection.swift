@@ -12,7 +12,7 @@ public class XPCConnection {
         case remoteMachService(serviceName: String, isPrivilegedHelperTool: Bool)
     }
 
-    public typealias MessageHandler = (XPCConnection, [String : Any]) async throws -> [String : Any]
+    public typealias MessageHandler = (XPCConnection, [String : Any]) async throws -> [String : Any]?
     public typealias ErrorHandler = (XPCConnection, Error) -> ()
 
     private let connection: xpc_connection_t
