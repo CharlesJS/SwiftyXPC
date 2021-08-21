@@ -13,7 +13,7 @@ extension CFDictionary {
         self[CFString.fromString(key)]
     }
 
-    public subscript(key: String, as typeID: CFTypeID) -> CFTypeRef? {
+    public subscript<T: CFTypeRef>(key: String, as typeID: CFTypeID) -> T? {
         self[CFString.fromString(key), as: typeID]
     }
 
