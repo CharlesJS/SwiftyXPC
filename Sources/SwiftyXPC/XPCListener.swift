@@ -17,7 +17,7 @@ public final class XPCListener {
 
     private enum Backing {
         case xpcMain
-        case connection(XPCConnection)
+        case connection(connection: XPCConnection, isMulti: Bool)
     }
 
     public let type: ListenerType
@@ -27,7 +27,7 @@ public final class XPCListener {
         switch self.backing {
         case .xpcMain:
             fatalError("Can't get endpoint for main service listener")
-        case .connection(let connection):
+        case .connection(let connection, _):
             return connection.makeEndpoint()
         }
     }
@@ -37,40 +37,50 @@ public final class XPCListener {
     private static var globalErrorHandler: XPCConnection.ErrorHandler? = nil
     private static var globalCodeSigningRequirement: String? = nil
 
+    private var _messageHandler: XPCConnection.MessageHandler? = nil
     public var messageHandler: XPCConnection.MessageHandler? {
         get {
             switch self.backing {
             case .xpcMain:
                 return Self.globalMessageHandler
-            case .connection(let connection):
-                return connection.messageHandler
+            case .connection(let connection, let isMulti):
+                return isMulti ? self._messageHandler : connection.messageHandler
             }
         }
         set {
             switch self.backing {
             case .xpcMain:
                 Self.globalMessageHandler = newValue
-            case .connection(let connection):
-                connection.messageHandler = newValue
+            case .connection(let connection, let isMulti):
+                if isMulti {
+                    self._messageHandler = newValue
+                } else {
+                    connection.messageHandler = newValue
+                }
             }
         }
     }
 
+    private var _errorHandler: XPCConnection.ErrorHandler? = nil
     public var errorHandler: XPCConnection.ErrorHandler? {
         get {
             switch self.backing {
             case .xpcMain:
                 return Self.globalErrorHandler
-            case .connection(let connection):
-                return connection.errorHandler
+            case .connection(let connection, let isMulti):
+                return isMulti ? self._errorHandler : connection.errorHandler
             }
         }
         set {
             switch self.backing {
             case .xpcMain:
                 Self.globalErrorHandler = newValue
-            case .connection(let connection):
-                connection.errorHandler = newValue
+            case .connection(let connection, let isMulti):
+                if isMulti {
+                    self._errorHandler = newValue
+                } else {
+                    connection.errorHandler = newValue
+                }
             }
         }
     }
@@ -81,19 +91,33 @@ public final class XPCListener {
         switch type {
         case .anonymous:
             self.backing = .connection(
-                try XPCConnection.makeAnonymousListenerConnection(codeSigningRequirement: requirement)
+                connection: try XPCConnection.makeAnonymousListenerConnection(codeSigningRequirement: requirement),
+                isMulti: false
             )
         case .service:
             self.backing = .xpcMain
             Self.globalCodeSigningRequirement = requirement
         case .machService(name: let name):
-            self.backing = .connection(
-                try XPCConnection(
-                    machServiceName: name,
-                    flags: XPC_CONNECTION_MACH_SERVICE_LISTENER,
-                    codeSigningRequirement: requirement
-                )
+            let connection = try XPCConnection(
+                machServiceName: name,
+                flags: XPC_CONNECTION_MACH_SERVICE_LISTENER,
+                codeSigningRequirement: requirement
             )
+
+            self.backing = .connection(connection: connection, isMulti: true)
+
+            connection.customEventHandler = { [weak self] in
+                do {
+                    let newConnection = try XPCConnection(connection: $0, codeSigningRequirement: requirement)
+
+                    newConnection.messageHandler = self?.messageHandler
+                    newConnection.errorHandler = self?.errorHandler
+
+                    newConnection.activate()
+                } catch {
+                    self?.errorHandler?(connection, error)
+                }
+            }
         }
     }
 
@@ -101,7 +125,7 @@ public final class XPCListener {
         switch self.backing {
         case .xpcMain:
             fatalError("XPC service listener cannot be cancelled")
-        case .connection(let connection):
+        case .connection(let connection, _):
             connection.cancel()
         }
     }
@@ -124,7 +148,7 @@ public final class XPCListener {
                     os.Logger().critical("Can’t initialize incoming XPC connection!")
                 }
             }
-        case .connection(let connection):
+        case .connection(let connection, _):
             connection.activate()
         }
     }
@@ -133,7 +157,7 @@ public final class XPCListener {
         switch self.backing {
         case .xpcMain:
             fatalError("XPC service listener cannot be suspended")
-        case .connection(let connection):
+        case .connection(let connection, _):
             connection.suspend()
         }
     }
@@ -142,7 +166,7 @@ public final class XPCListener {
         switch self.backing {
         case .xpcMain:
             fatalError("XPC service listener cannot be resumed")
-        case .connection(let connection):
+        case .connection(let connection, _):
             connection.resume()
         }
     }

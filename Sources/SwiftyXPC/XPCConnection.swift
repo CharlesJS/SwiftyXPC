@@ -55,6 +55,7 @@ public class XPCConnection {
 
     public var messageHandler: MessageHandler? = nil
     public var errorHandler: ErrorHandler? = nil
+    internal var customEventHandler: xpc_handler_t? = nil
 
     public var auditSessionIdentifier: au_asid_t {
         xpc_connection_get_asid(self.connection)
@@ -129,9 +130,12 @@ public class XPCConnection {
     }
 
     private func handleEvent(_ event: xpc_object_t) {
-        let type = xpc_get_type(event)
+        if let customEventHandler = self.customEventHandler {
+            customEventHandler(event)
+            return
+        }
 
-        if type == XPC_TYPE_CONNECTION { return }
+        let type = xpc_get_type(event)
 
         guard type == XPC_TYPE_DICTIONARY, let message = [String : Any].fromXPCObject(event) else {
             self.errorHandler?(self, type == XPC_TYPE_ERROR ? XPCError(error: event) : Errno.badFileTypeOrFormat)
