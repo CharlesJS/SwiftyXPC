@@ -131,6 +131,8 @@ public class XPCConnection {
     private func handleEvent(_ event: xpc_object_t) {
         let type = xpc_get_type(event)
 
+        if type == XPC_TYPE_CONNECTION { return }
+
         guard type == XPC_TYPE_DICTIONARY, let message = [String : Any].fromXPCObject(event) else {
             self.errorHandler?(self, type == XPC_TYPE_ERROR ? XPCError(error: event) : Errno.badFileTypeOrFormat)
             return
