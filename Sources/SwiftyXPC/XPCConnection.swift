@@ -1,5 +1,6 @@
 import System
 import XPC
+import os
 
 public class XPCConnection {
     static let responseKey = "com.charlessoft.SwiftyXPC.XPCEventHandler.ResponseKey"
@@ -97,16 +98,24 @@ public class XPCConnection {
         guard let xpcRequest = request.toXPCObject() else { throw Errno.invalidArgument }
 
         return try await withCheckedThrowingContinuation { continuation in
+            let l = Logger(subsystem: String(CommandLine.arguments[0].split(separator: "/").last!), category: "XPCListener")
+            l.warning("Sending message with reply: \(request)")
+
             xpc_connection_send_message_with_reply(self.connection, xpcRequest, nil) { event in
                 do {
+                    l.warning("Got reply")
                     guard xpc_get_type(event) == XPC_TYPE_DICTIONARY,
                           let reply = [String : Any].fromXPCObject(event) else {
+                              l.warning("reply of wrong type")
                               throw XPCError(error: event)
                     }
+                    l.warning("reply is \(reply)")
 
                     guard let response = reply[Self.responseKey] as? [String : Any] else {
+                        l.warning("error: no response")
                         throw reply[Self.errorKey] as? Error ?? Errno.invalidArgument
                     }
+                    l.warning("response was \(response)")
 
                     continuation.resume(returning: response)
                 } catch {
@@ -122,6 +131,8 @@ public class XPCConnection {
 
     private func sendOnewayMessage(_ message: [String : Any], asReplyTo original: xpc_object_t?) throws {
         guard let xpcMessage = message.toXPCObject(replyTo: original) else { throw Errno.invalidArgument }
+        let l = Logger(subsystem: String(CommandLine.arguments[0].split(separator: "/").last!), category: "XPCListener")
+        l.warning("sending oneway message: \(message)")
         xpc_connection_send_message(self.connection, xpcMessage)
     }
 

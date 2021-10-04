@@ -109,7 +109,12 @@ public final class XPCListener {
 
             connection.customEventHandler = { [weak self] in
                 do {
-                    guard xpc_get_type($0) == XPC_TYPE_CONNECTION else { throw Errno.invalidArgument }
+                    let l = Logger(subsystem: String(CommandLine.arguments[0].split(separator: "/").last!), category: "XPCListener")
+                    l.warning("custom event handler")
+                    guard xpc_get_type($0) == XPC_TYPE_CONNECTION else {
+                        l.warning("failed with invalie xpc type")
+                        throw Errno.invalidArgument
+                    }
 
                     let newConnection = try XPCConnection(connection: $0, codeSigningRequirement: requirement)
 
