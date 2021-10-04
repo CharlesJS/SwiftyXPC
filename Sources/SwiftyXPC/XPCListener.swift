@@ -6,6 +6,7 @@
 //
 
 import XPC
+import System
 import os
 
 public final class XPCListener {
@@ -108,6 +109,8 @@ public final class XPCListener {
 
             connection.customEventHandler = { [weak self] in
                 do {
+                    guard xpc_get_type($0) == XPC_TYPE_CONNECTION else { throw Errno.invalidArgument }
+
                     let newConnection = try XPCConnection(connection: $0, codeSigningRequirement: requirement)
 
                     newConnection.messageHandler = self?.messageHandler
