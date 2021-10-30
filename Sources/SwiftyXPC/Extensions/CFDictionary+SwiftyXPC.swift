@@ -79,25 +79,26 @@ extension CFDictionary: XPCConvertible {
         let xpcKeys = UnsafeMutablePointer<UnsafePointer<CChar>>.allocate(capacity: count)
         defer { xpcKeys.deallocate() }
 
-        let xpcObjs = UnsafeMutablePointer<xpc_object_t?>.allocate(capacity: count)
-        defer { xpcObjs.deallocate() }
-
         CFDictionaryGetKeysAndValues(self, keys, objs)
 
-        let xpcCount = (0..<count).reduce(into: 0) { xpcCount, index in
-            if let xpcConvertible = objs[index] as? XPCConvertible {
-                unsafeBitCast(keys[index], to: CFString.self).withCString {
+        var xpcCount = 0
+
+        let xpcObjs: [xpc_object_t?] = (0..<count).compactMap {
+            if let pointer = objs[$0], let xpcObject = convertToXPC(pointer) {
+                unsafeBitCast(keys[$0], to: CFString.self).withCString {
                     xpcKeys[xpcCount] = UnsafePointer(strdup($0))
                 }
 
-                xpcObjs[xpcCount] = xpcConvertible.toXPCObject()
-
                 xpcCount += 1
+
+                return xpcObject
+            } else {
+                return nil
             }
         }
 
         defer { (0..<xpcCount).forEach { free(UnsafeMutableRawPointer(mutating: xpcKeys[$0])) } }
 
-        return xpc_dictionary_create(xpcKeys, xpcObjs, xpcCount)
+        return xpcObjs.withUnsafeBufferPointer { xpc_dictionary_create(xpcKeys, $0.baseAddress, $0.count) }
     }
 }

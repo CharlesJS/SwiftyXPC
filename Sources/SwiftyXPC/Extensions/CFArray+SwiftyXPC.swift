@@ -41,18 +41,16 @@ extension CFArray: XPCConvertible {
         let objs = UnsafeMutablePointer<UnsafeRawPointer?>.allocate(capacity: count)
         defer { objs.deallocate() }
 
-        let xpcObjs = UnsafeMutablePointer<xpc_object_t>.allocate(capacity: count)
-        defer { xpcObjs.deallocate() }
-
         CFArrayGetValues(self, CFRangeMake(0, count), objs)
 
-        let xpcCount = (0..<count).reduce(into: 0) {
-            if let xpcObject = (objs[$1] as? XPCConvertible)?.toXPCObject() {
-                xpcObjs[$0] = xpcObject
-                $0 += 1
+        let xpcObjs: [xpc_object_t] = (0..<count).compactMap {
+            if let pointer = objs[$0], let xpcObject = convertToXPC(pointer) {
+                return xpcObject
+            } else {
+                return nil
             }
         }
 
-        return xpc_array_create(xpcObjs, xpcCount)
+        return xpcObjs.withUnsafeBufferPointer { xpc_array_create($0.baseAddress, $0.count) }
     }
 }

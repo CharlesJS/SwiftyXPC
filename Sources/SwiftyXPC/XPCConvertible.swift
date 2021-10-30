@@ -63,11 +63,13 @@ public func convertFromXPC(_ object: xpc_object_t) -> XPCConvertible? {
     }
 }
 
-public func convertToXPC(_ obj: Any) -> xpc_object_t? {
-    if let convertible = obj as? _XPCConvertible {
+public func convertToXPC(_ val: Any) -> xpc_object_t? {
+    if let convertible = val as? _XPCConvertible {
         return convertible.toXPCObject()
     } else {
-        switch CFGetTypeID(obj as AnyObject) {
+        let obj = convertToObject(val)
+
+        switch CFGetTypeID(obj) {
         case CFNullGetTypeID():
             return unsafeBitCast(obj, to: CFNull.self).toXPCObject()
         case CFBooleanGetTypeID():
@@ -93,5 +95,15 @@ public func convertToXPC(_ obj: Any) -> xpc_object_t? {
         default:
             return nil
         }
+    }
+}
+
+private func convertToObject(_ val: Any) -> AnyObject {
+    if let pointer = val as? UnsafeRawPointer {
+       return unsafeBitCast(UInt(bitPattern: pointer), to: AnyObject.self)
+    } else if let pointer = val as? UnsafeMutableRawPointer {
+        return unsafeBitCast(UInt(bitPattern: pointer), to: AnyObject.self)
+    } else {
+        return val as AnyObject
     }
 }

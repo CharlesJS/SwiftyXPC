@@ -40,7 +40,7 @@ extension Dictionary: XPCConvertible where Key: StringProtocol {
         guard let dict: xpc_object_t = self.createEmptyXPCObject(replyTo: replyTo) else { return nil }
 
         for (eachKey, eachValue) in self {
-            if let value = (eachValue as? XPCConvertible)?.toXPCObject() {
+            if let value = convertToXPC(eachValue) {
                 eachKey.withCString {
                     xpc_dictionary_set_value(dict, $0, value)
                 }

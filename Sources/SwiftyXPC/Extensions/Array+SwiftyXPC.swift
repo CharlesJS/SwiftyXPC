@@ -15,7 +15,7 @@ extension Array: XPCConvertible {
     }
 
     public func toXPCObject() -> xpc_object_t? {
-        self.compactMap { ($0 as? XPCConvertible)?.toXPCObject() }.withUnsafeBufferPointer {
+        self.compactMap { convertToXPC($0) }.withUnsafeBufferPointer {
             xpc_array_create($0.baseAddress, $0.count)
         }
     }
