@@ -112,7 +112,7 @@ public final class XPCListener {
                     let l = Logger(subsystem: String(CommandLine.arguments[0].split(separator: "/").last!), category: "XPCListener")
                     l.warning("custom event handler")
                     guard xpc_get_type($0) == XPC_TYPE_CONNECTION else {
-                        l.warning("failed with invalie xpc type")
+                        l.warning("failed with invalid xpc type")
                         throw Errno.invalidArgument
                     }
 
