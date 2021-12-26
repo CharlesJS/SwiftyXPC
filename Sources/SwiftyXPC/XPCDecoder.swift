@@ -73,10 +73,10 @@ private extension XPCDecodingContainer {
         let length = xpc_string_get_length(xpc)
         let pointer = xpc_string_get_string_ptr(xpc)
 
-        defer { _ = xpc.self } // guard against xpc getting prematurely reaped by ARC
-
-        return UnsafeBufferPointer(start: pointer, count: length).withMemoryRebound(to: UInt8.self) {
-            String(decoding: $0, as: UTF8.self)
+        return withExtendedLifetime(xpc) {
+            UnsafeBufferPointer(start: pointer, count: length).withMemoryRebound(to: UInt8.self) {
+                String(decoding: $0, as: UTF8.self)
+            }
         }
     }
 }
@@ -250,17 +250,17 @@ public final class XPCDecoder {
             try self.decodeInteger(xpc: self.getValue(for: key))
         }
 
-        func decode<T>(_ type: T.Type, forKey key: Key) throws -> T where T : Decodable {
+        func decode<T: Decodable>(_ type: T.Type, forKey key: Key) throws -> T {
             let xpc = try self.getValue(for: key)
             let codingPath = self.codingPath + [key]
 
             return try type.init(from: _XPCDecoder(xpc: xpc, codingPath: codingPath))
         }
 
-        func nestedContainer<NestedKey>(
+        func nestedContainer<NestedKey: CodingKey>(
             keyedBy type: NestedKey.Type,
             forKey key: Key
-        ) throws -> KeyedDecodingContainer<NestedKey> where NestedKey : CodingKey {
+        ) throws -> KeyedDecodingContainer<NestedKey> {
             let value = try self.getValue(for: key)
             let codingPath = self.codingPath + [key]
 
@@ -448,7 +448,7 @@ public final class XPCDecoder {
         func decode(_ type: UInt32.Type) throws -> UInt32 { try self.decodeInteger() }
         func decode(_ type: UInt64.Type) throws -> UInt64 { try self.decodeInteger() }
 
-        func decode<T>(_ type: T.Type) throws -> T where T : Decodable {
+        func decode<T: Decodable>(_ type: T.Type) throws -> T {
             if type == Bool.self {
                 return try self.decode(Bool.self) as! T
             } else if type == String.self {
@@ -485,9 +485,9 @@ public final class XPCDecoder {
             }
         }
 
-        func nestedContainer<NestedKey>(
+        func nestedContainer<NestedKey: CodingKey>(
             keyedBy type: NestedKey.Type
-        ) throws -> KeyedDecodingContainer<NestedKey> where NestedKey : CodingKey {
+        ) throws -> KeyedDecodingContainer<NestedKey> {
             let codingPath = self.nextCodingPath()
             let xpc = try self.readNext(xpcType: nil, swiftType: Any.self)
 
@@ -550,7 +550,7 @@ public final class XPCDecoder {
         func decode(_ type: UInt32.Type) throws -> UInt32 { try self.decodeInteger(xpc: self.xpc) }
         func decode(_ type: UInt64.Type) throws -> UInt64 { try self.decodeInteger(xpc: self.xpc) }
 
-        func decode<T>(_ type: T.Type) throws -> T where T : Decodable {
+        func decode<T: Decodable>(_ type: T.Type) throws -> T {
             try T.init(from: _XPCDecoder(xpc: self.xpc, codingPath: self.codingPath))
         }
     }
@@ -566,7 +566,7 @@ public final class XPCDecoder {
             self.codingPath = codingPath
         }
 
-        func container<Key>(keyedBy type: Key.Type) -> KeyedDecodingContainer<Key> where Key : CodingKey {
+        func container<Key: CodingKey>(keyedBy type: Key.Type) -> KeyedDecodingContainer<Key> {
             precondition(!self.hasCreatedContainer, "Can only have one top-level container")
             defer { self.hasCreatedContainer = true }
 
