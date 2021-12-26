@@ -4,6 +4,7 @@
 //  Created by Charles Srstka on 11/2/21.
 //
 
+import System
 import XPC
 
 private protocol XPCDecodingContainer {
@@ -254,7 +255,17 @@ public final class XPCDecoder {
             let xpc = try self.getValue(for: key)
             let codingPath = self.codingPath + [key]
 
-            return try type.init(from: _XPCDecoder(xpc: xpc, codingPath: codingPath))
+            if type == XPCFileDescriptor.self {
+                try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: xpc)
+
+                return XPCFileDescriptor(fileDescriptor: xpc_fd_dup(xpc)) as! T
+            } else if #available(macOS 11.0, *), type == FileDescriptor.self {
+                try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: xpc)
+
+                return FileDescriptor(rawValue: xpc_fd_dup(xpc)) as! T
+            } else {
+                return try type.init(from: _XPCDecoder(xpc: xpc, codingPath: codingPath))
+            }
         }
 
         func nestedContainer<NestedKey: CodingKey>(
@@ -477,6 +488,16 @@ public final class XPCDecoder {
                 return try self.decode(UInt32.self) as! T
             } else if type == UInt64.self {
                 return try self.decode(UInt64.self) as! T
+            } else if type == XPCFileDescriptor.self {
+                let xpc = try self.readNext(xpcType: nil, swiftType: type)
+                try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: xpc)
+
+                return XPCFileDescriptor(fileDescriptor: xpc_fd_dup(xpc)) as! T
+            } else if #available(macOS 11.0, *), type == FileDescriptor.self {
+                let xpc = try self.readNext(xpcType: nil, swiftType: type)
+                try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: xpc)
+
+                return FileDescriptor(rawValue: xpc_fd_dup(xpc)) as! T
             } else {
                 let codingPath = self.nextCodingPath()
                 let xpc = try self.readNext(xpcType: nil, swiftType: type)
@@ -551,7 +572,17 @@ public final class XPCDecoder {
         func decode(_ type: UInt64.Type) throws -> UInt64 { try self.decodeInteger(xpc: self.xpc) }
 
         func decode<T: Decodable>(_ type: T.Type) throws -> T {
-            try T.init(from: _XPCDecoder(xpc: self.xpc, codingPath: self.codingPath))
+            if type == XPCFileDescriptor.self {
+                try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: self.xpc)
+
+                return XPCFileDescriptor(fileDescriptor: xpc_fd_dup(self.xpc)) as! T
+            } else if #available(macOS 11.0, *), type == FileDescriptor.self {
+                try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: self.xpc)
+
+                return FileDescriptor(rawValue: xpc_fd_dup(self.xpc)) as! T
+            } else {
+                return try T.init(from: _XPCDecoder(xpc: self.xpc, codingPath: self.codingPath))
+            }
         }
     }
 

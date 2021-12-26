@@ -4,6 +4,7 @@
 //  Created by Charles Srstka on 11/2/21.
 //
 
+import System
 import XPC
 
 private protocol XPCEncodingContainer {
@@ -93,11 +94,19 @@ public class XPCEncoder {
         func encode(_ value: UInt64, forKey key: Key) throws { self.encode(xpcValue: self.encodeInteger(value), for: key) }
 
         func encode<T: Encodable>(_ value: T, forKey key: Key) throws {
-            let encoder = _XPCEncoder(parentXPC: self.dict, codingPath: self.codingPath + [key])
+            if let fileDescriptor = value as? XPCFileDescriptor, let xpc = xpc_fd_create(fileDescriptor.fileDescriptor) {
+                self.encode(xpcValue: xpc, for: key)
+            } else if #available(macOS 11.0, *),
+                      let fileDescriptor = value as? FileDescriptor,
+                      let xpc = xpc_fd_create(fileDescriptor.rawValue) {
+                self.encode(xpcValue: xpc, for: key)
+            } else {
+                let encoder = _XPCEncoder(parentXPC: self.dict, codingPath: self.codingPath + [key])
 
-            self.childEncoders.append(encoder)
+                self.childEncoders.append(encoder)
 
-            try value.encode(to: encoder)
+                try value.encode(to: encoder)
+            }
         }
 
         func nestedContainer<NestedKey: CodingKey>(
@@ -258,17 +267,25 @@ public class XPCEncoder {
         func encode<T: Encodable>(_ value: T) throws {
             let codingPath = self.nextCodingPath()
 
-            self.encodeNil() // leave placeholder which will be overwritten later
+            if let fileDescriptor = value as? XPCFileDescriptor, let xpc = xpc_fd_create(fileDescriptor.fileDescriptor) {
+                self.encode(xpc: xpc)
+            } else if #available(macOS 11.0, *),
+                      let fileDescriptor = value as? FileDescriptor,
+                      let xpc = xpc_fd_create(fileDescriptor.rawValue) {
+                self.encode(xpc: xpc)
+            } else {
+                self.encodeNil() // leave placeholder which will be overwritten later
 
-            guard case .array(let array) = self.storage else {
-                preconditionFailure("encodeNil() should have converted storage to array")
+                guard case .array(let array) = self.storage else {
+                    preconditionFailure("encodeNil() should have converted storage to array")
+                }
+
+                let encoder = _XPCEncoder(parentXPC: array, codingPath: codingPath)
+
+                self.childEncoders.append(encoder)
+
+                try value.encode(to: encoder)
             }
-
-            let encoder = _XPCEncoder(parentXPC: array, codingPath: codingPath)
-
-            self.childEncoders.append(encoder)
-
-            try value.encode(to: encoder)
         }
 
         func nestedContainer<NestedKey: CodingKey>(
@@ -360,16 +377,24 @@ public class XPCEncoder {
         func encode(_ value: UInt64) throws { self.encode(xpcValue: self.encodeInteger(value)) }
 
         func encode<T: Encodable>(_ value: T) throws {
-            let encoder = _XPCEncoder(parentXPC: nil, codingPath: self.codingPath)
-            try value.encode(to: encoder)
+            if let fileDescriptor = value as? XPCFileDescriptor, let xpc = xpc_fd_create(fileDescriptor.fileDescriptor) {
+                self.encode(xpcValue: xpc)
+            } else if #available(macOS 11.0, *),
+                      let fileDescriptor = value as? FileDescriptor,
+                      let xpc = xpc_fd_create(fileDescriptor.rawValue) {
+                self.encode(xpcValue: xpc)
+            } else {
+                let encoder = _XPCEncoder(parentXPC: nil, codingPath: self.codingPath)
+                try value.encode(to: encoder)
 
-            self.childEncoders.append(encoder)
+                self.childEncoders.append(encoder)
 
-            guard let encoded = encoder.encodedValue else {
-                preconditionFailure("XPCEncoder did not set encoded value")
+                guard let encoded = encoder.encodedValue else {
+                    preconditionFailure("XPCEncoder did not set encoded value")
+                }
+
+                self.encode(xpcValue: encoded)
             }
-
-            self.encode(xpcValue: encoded)
         }
     }
 
