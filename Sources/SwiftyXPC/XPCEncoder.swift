@@ -100,6 +100,8 @@ public class XPCEncoder {
                       let fileDescriptor = value as? FileDescriptor,
                       let xpc = xpc_fd_create(fileDescriptor.rawValue) {
                 self.encode(xpcValue: xpc, for: key)
+            } else if value is XPCNull {
+                self.encode(xpcValue: xpc_null_create(), for: key)
             } else {
                 let encoder = _XPCEncoder(parentXPC: self.dict, codingPath: self.codingPath + [key])
 
@@ -203,13 +205,13 @@ public class XPCEncoder {
             self.codingPath = codingPath
         }
 
-        private func encode(xpc: xpc_object_t) {
+        private func encode(xpcValue: xpc_object_t) {
             switch self.storage {
             case .empty:
-                var value = xpc
+                var value = xpcValue
                 self.storage = .array(xpc_array_create(&value, 1))
             case .array(let array):
-                xpc_array_append_value(array, xpc)
+                xpc_array_append_value(array, xpcValue)
             case .bytes(let byteStorage):
                 var byteArray: [xpc_object_t]
                 if byteStorage.isSigned {
@@ -218,7 +220,7 @@ public class XPCEncoder {
                     byteArray = byteStorage.bytes.map { self.encodeInteger($0) }
                 }
 
-                byteArray.append(xpc)
+                byteArray.append(xpcValue)
 
                 self.storage = .array(byteArray.withUnsafeBufferPointer { xpc_array_create($0.baseAddress, $0.count) })
             case .finalized:
@@ -233,7 +235,7 @@ public class XPCEncoder {
             case .bytes(let byteStorage) where byteStorage.isSigned:
                 byteStorage.bytes.append(UInt8(bitPattern: byte))
             default:
-                self.encode(xpc: self.encodeInteger(byte))
+                self.encode(xpcValue: self.encodeInteger(byte))
             }
         }
 
@@ -244,35 +246,37 @@ public class XPCEncoder {
             case .bytes(let byteStorage) where !byteStorage.isSigned:
                 byteStorage.bytes.append(byte)
             default:
-                self.encode(xpc: self.encodeInteger(byte))
+                self.encode(xpcValue: self.encodeInteger(byte))
             }
         }
 
-        func encodeNil() { self.encode(xpc: self.encodeNil()) }
-        func encode(_ value: Bool) throws { self.encode(xpc: self.encodeBool(value)) }
-        func encode(_ value: String) throws { self.encode(xpc: self.encodeString(value)) }
-        func encode(_ value: Double) throws { self.encode(xpc: self.encodeFloat(value)) }
-        func encode(_ value: Float) throws { self.encode(xpc: self.encodeFloat(value)) }
-        func encode(_ value: Int) throws { self.encode(xpc: self.encodeInteger(value)) }
+        func encodeNil() { self.encode(xpcValue: self.encodeNil()) }
+        func encode(_ value: Bool) throws { self.encode(xpcValue: self.encodeBool(value)) }
+        func encode(_ value: String) throws { self.encode(xpcValue: self.encodeString(value)) }
+        func encode(_ value: Double) throws { self.encode(xpcValue: self.encodeFloat(value)) }
+        func encode(_ value: Float) throws { self.encode(xpcValue: self.encodeFloat(value)) }
+        func encode(_ value: Int) throws { self.encode(xpcValue: self.encodeInteger(value)) }
         func encode(_ value: Int8) throws { self.encodeByte(value) }
-        func encode(_ value: Int16) throws { self.encode(xpc: self.encodeInteger(value)) }
-        func encode(_ value: Int32) throws { self.encode(xpc: self.encodeInteger(value)) }
-        func encode(_ value: Int64) throws { self.encode(xpc: self.encodeInteger(value)) }
-        func encode(_ value: UInt) throws { self.encode(xpc: self.encodeInteger(value)) }
+        func encode(_ value: Int16) throws { self.encode(xpcValue: self.encodeInteger(value)) }
+        func encode(_ value: Int32) throws { self.encode(xpcValue: self.encodeInteger(value)) }
+        func encode(_ value: Int64) throws { self.encode(xpcValue: self.encodeInteger(value)) }
+        func encode(_ value: UInt) throws { self.encode(xpcValue: self.encodeInteger(value)) }
         func encode(_ value: UInt8) throws { self.encodeByte(value) }
-        func encode(_ value: UInt16) throws { self.encode(xpc: self.encodeInteger(value)) }
-        func encode(_ value: UInt32) throws { self.encode(xpc: self.encodeInteger(value)) }
-        func encode(_ value: UInt64) throws { self.encode(xpc: self.encodeInteger(value)) }
+        func encode(_ value: UInt16) throws { self.encode(xpcValue: self.encodeInteger(value)) }
+        func encode(_ value: UInt32) throws { self.encode(xpcValue: self.encodeInteger(value)) }
+        func encode(_ value: UInt64) throws { self.encode(xpcValue: self.encodeInteger(value)) }
 
         func encode<T: Encodable>(_ value: T) throws {
             let codingPath = self.nextCodingPath()
 
             if let fileDescriptor = value as? XPCFileDescriptor, let xpc = xpc_fd_create(fileDescriptor.fileDescriptor) {
-                self.encode(xpc: xpc)
+                self.encode(xpcValue: xpc)
             } else if #available(macOS 11.0, *),
                       let fileDescriptor = value as? FileDescriptor,
                       let xpc = xpc_fd_create(fileDescriptor.rawValue) {
-                self.encode(xpc: xpc)
+                self.encode(xpcValue: xpc)
+            } else if value is XPCNull {
+                self.encode(xpcValue: xpc_null_create())
             } else {
                 self.encodeNil() // leave placeholder which will be overwritten later
 
@@ -292,7 +296,7 @@ public class XPCEncoder {
             keyedBy keyType: NestedKey.Type
         ) -> KeyedEncodingContainer<NestedKey> {
             let dict = xpc_dictionary_create(nil, nil, 0)
-            self.encode(xpc: dict)
+            self.encode(xpcValue: dict)
 
             let container = KeyedContainer<NestedKey>(wrapping: dict, codingPath: self.nextCodingPath())
 
@@ -303,7 +307,7 @@ public class XPCEncoder {
 
         func nestedUnkeyedContainer() -> UnkeyedEncodingContainer {
             let dict = xpc_dictionary_create(nil, nil, 0)
-            self.encode(xpc: dict)
+            self.encode(xpcValue: dict)
 
             let container = UnkeyedContainer(wrapping: dict, codingPath: self.nextCodingPath())
 
@@ -383,6 +387,8 @@ public class XPCEncoder {
                       let fileDescriptor = value as? FileDescriptor,
                       let xpc = xpc_fd_create(fileDescriptor.rawValue) {
                 self.encode(xpcValue: xpc)
+            } else if value is XPCNull {
+                self.encode(xpcValue: xpc_null_create())
             } else {
                 let encoder = _XPCEncoder(parentXPC: nil, codingPath: self.codingPath)
                 try value.encode(to: encoder)

@@ -263,6 +263,10 @@ public final class XPCDecoder {
                 try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: xpc)
 
                 return FileDescriptor(rawValue: xpc_fd_dup(xpc)) as! T
+            } else if type == XPCNull.self {
+                try checkType(xpcType: XPC_TYPE_NULL, swiftType: XPCNull.self, xpc: xpc)
+
+                return XPCNull.shared as! T
             } else {
                 return try type.init(from: _XPCDecoder(xpc: xpc, codingPath: codingPath))
             }
@@ -489,15 +493,17 @@ public final class XPCDecoder {
             } else if type == UInt64.self {
                 return try self.decode(UInt64.self) as! T
             } else if type == XPCFileDescriptor.self {
-                let xpc = try self.readNext(xpcType: nil, swiftType: type)
-                try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: xpc)
+                let xpc = try self.readNext(xpcType: XPC_TYPE_FD, swiftType: type)
 
                 return XPCFileDescriptor(fileDescriptor: xpc_fd_dup(xpc)) as! T
             } else if #available(macOS 11.0, *), type == FileDescriptor.self {
-                let xpc = try self.readNext(xpcType: nil, swiftType: type)
-                try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: xpc)
+                let xpc = try self.readNext(xpcType: XPC_TYPE_FD, swiftType: type)
 
                 return FileDescriptor(rawValue: xpc_fd_dup(xpc)) as! T
+            } else if type == XPCNull.self {
+                _ = try self.readNext(xpcType: XPC_TYPE_NULL, swiftType: XPCNull.self)
+
+                return XPCNull.shared as! T
             } else {
                 let codingPath = self.nextCodingPath()
                 let xpc = try self.readNext(xpcType: nil, swiftType: type)
@@ -580,6 +586,10 @@ public final class XPCDecoder {
                 try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: self.xpc)
 
                 return FileDescriptor(rawValue: xpc_fd_dup(self.xpc)) as! T
+            } else if type == XPCNull.self {
+                try checkType(xpcType: XPC_TYPE_NULL, swiftType: XPCNull.self, xpc: self.xpc)
+
+                return XPCNull.shared as! T
             } else {
                 return try T.init(from: _XPCDecoder(xpc: self.xpc, codingPath: self.codingPath))
             }
