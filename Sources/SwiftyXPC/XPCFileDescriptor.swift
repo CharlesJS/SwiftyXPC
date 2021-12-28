@@ -13,8 +13,4 @@ public final class XPCFileDescriptor: Codable {
     public init(fileDescriptor: Int32) {
         self.fileDescriptor = fileDescriptor
     }
-
-    deinit {
-        _ = close(self.fileDescriptor)
-    }
 }
