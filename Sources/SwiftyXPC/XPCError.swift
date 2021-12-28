@@ -1,6 +1,6 @@
 import XPC
 
-public enum XPCError: Error {
+public enum XPCError: Error, Codable {
     case connectionInterrupted
     case connectionInvalid
     case terminationImminent
@@ -18,6 +18,23 @@ public enum XPCError: Error {
             let errorString = Self.errorString(error: error)
 
             self = .unknown(errorString)
+        }
+    }
+
+    public var errorDescription: String? { self.failureReason }
+
+    public var failureReason: String? {
+        switch self {
+        case .connectionInterrupted:
+            return Self.errorString(error: XPC_ERROR_CONNECTION_INTERRUPTED)
+        case .connectionInvalid:
+            return Self.errorString(error: XPC_ERROR_CONNECTION_INVALID)
+        case .terminationImminent:
+            return Self.errorString(error: XPC_ERROR_TERMINATION_IMMINENT)
+        case .invalidCodeSignatureRequirement:
+            return "Invalid Code Signature Requirement"
+        case .unknown(let failureReason):
+            return failureReason
         }
     }
 

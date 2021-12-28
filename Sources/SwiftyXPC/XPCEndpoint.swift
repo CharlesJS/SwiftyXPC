@@ -7,7 +7,15 @@
 
 import XPC
 
-public struct XPCEndpoint: XPCConvertible {
+public struct XPCEndpoint: Codable {
+    private struct CanOnlyBeDecodedByXPCDecoder: Error {
+        var localizedDescription: String { "XPCEndpoint can only be decoded via XPCDecoder." }
+    }
+
+    private struct CanOnlyBeEncodedByXPCEncoder: Error {
+        var localizedDescription: String { "XPCEndpoint can only be encoded via XPCEncoder." }
+    }
+
     private let endpoint: xpc_endpoint_t
 
     internal init(connection: xpc_connection_t) {
@@ -18,11 +26,11 @@ public struct XPCEndpoint: XPCConvertible {
         xpc_connection_create_from_endpoint(self.endpoint)
     }
 
-    public static func fromXPCObject(_ xpcObject: xpc_object_t) -> XPCEndpoint? {
-        XPCEndpoint(connection: xpcObject)
+    public init(from decoder: Decoder) throws {
+        throw CanOnlyBeDecodedByXPCDecoder()
     }
 
-    public func toXPCObject() -> xpc_object_t? {
-        self.endpoint
+    public func encode(to encoder: Encoder) throws {
+        throw CanOnlyBeEncodedByXPCEncoder()
     }
 }

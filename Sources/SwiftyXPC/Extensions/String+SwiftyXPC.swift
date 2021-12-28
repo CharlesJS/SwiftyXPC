@@ -7,12 +7,12 @@
 
 import XPC
 
-extension String: XPCConvertible {
-    public static func fromXPCObject(_ xpcObject: xpc_object_t) -> String? {
+extension String {
+    public init?(_ xpcObject: xpc_object_t) {
         guard let ptr = xpc_string_get_string_ptr(xpcObject) else { return nil }
         let length = xpc_string_get_length(xpcObject)
 
-        return UnsafeBufferPointer(start: ptr, count: length).withMemoryRebound(to: UInt8.self) {
+        self = UnsafeBufferPointer(start: ptr, count: length).withMemoryRebound(to: UInt8.self) {
             String(decoding: $0, as: UTF8.self)
         }
     }

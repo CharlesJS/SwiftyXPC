@@ -8,6 +8,7 @@
 import XPC
 import System
 import os
+import Foundation
 
 public final class XPCListener {
     public enum ListenerType {
@@ -34,30 +35,67 @@ public final class XPCListener {
     }
 
     // because xpc_main takes a C function that can't capture any context, we need to store these globally
-    private static var globalMessageHandler: XPCConnection.MessageHandler? = nil
+    private static var globalMessageHandlers: [String : XPCConnection.MessageHandler] = [:]
     private static var globalErrorHandler: XPCConnection.ErrorHandler? = nil
     private static var globalCodeSigningRequirement: String? = nil
 
-    private var _messageHandler: XPCConnection.MessageHandler? = nil
-    public var messageHandler: XPCConnection.MessageHandler? {
-        get {
-            switch self.backing {
-            case .xpcMain:
-                return Self.globalMessageHandler
-            case .connection(let connection, let isMulti):
-                return isMulti ? self._messageHandler : connection.messageHandler
-            }
+    private var _messageHandlers: [String : XPCConnection.MessageHandler] = [:]
+    private var messageHandlers: [String : XPCConnection.MessageHandler] {
+        switch self.backing {
+        case .xpcMain:
+            return Self.globalMessageHandlers
+        case .connection(let connection, let isMulti):
+            return isMulti ? self._messageHandlers : connection.messageHandlers
         }
-        set {
-            switch self.backing {
-            case .xpcMain:
-                Self.globalMessageHandler = newValue
-            case .connection(let connection, let isMulti):
-                if isMulti {
-                    self._messageHandler = newValue
-                } else {
-                    connection.messageHandler = newValue
-                }
+    }
+
+    private func getMessageHandler(forName name: String) -> XPCConnection.MessageHandler.RawHandler? {
+        switch self.backing {
+        case .xpcMain:
+            return Self.globalMessageHandlers[name]?.closure
+        case .connection(let connection, let isMulti):
+            return isMulti ? self._messageHandlers[name]?.closure : connection.getMessageHandler(forName: name)
+        }
+    }
+
+    public func setMessageHandler(name: String, handler: @escaping (XPCConnection) async throws -> ()) {
+        self.setMessageHandler(name: name) { (connection: XPCConnection, _: XPCNull) async throws -> XPCNull in
+            try await handler(connection)
+            return XPCNull.shared
+        }
+    }
+
+    public func setMessageHandler<Request: Codable>(
+        name: String,
+        handler: @escaping (XPCConnection, Request) async throws -> ()
+    ) {
+        self.setMessageHandler(name: name) { (connection: XPCConnection, request: Request) async throws -> XPCNull in
+            try await handler(connection, request)
+            return XPCNull.shared
+        }
+    }
+
+    public func setMessageHandler<Response: Codable>(
+        name: String,
+        handler: @escaping (XPCConnection) async throws -> Response
+    ) {
+        self.setMessageHandler(name: name) { (connection: XPCConnection, _: XPCNull) async throws -> Response in
+            try await handler(connection)
+        }
+    }
+
+    public func setMessageHandler<Request: Codable, Response: Codable>(
+        name: String,
+        handler: @escaping (XPCConnection, Request) async throws -> Response
+    ) {
+        switch self.backing {
+        case .xpcMain:
+            Self.globalMessageHandlers[name] = XPCConnection.MessageHandler(closure: handler)
+        case .connection(let connection, let isMulti):
+            if isMulti {
+                self._messageHandlers[name] = XPCConnection.MessageHandler(closure: handler)
+            } else {
+                connection.setMessageHandler(name: name, handler: handler)
             }
         }
     }
@@ -109,11 +147,13 @@ public final class XPCListener {
 
             connection.customEventHandler = { [weak self] in
                 do {
-                    guard xpc_get_type($0) == XPC_TYPE_CONNECTION else { throw Errno.invalidArgument }
+                    guard case .connection = $0.type else {
+                        preconditionFailure("XPCListener is required to have connection backing when run as a Mach service")
+                    }
 
                     let newConnection = try XPCConnection(connection: $0, codeSigningRequirement: requirement)
 
-                    newConnection.messageHandler = self?.messageHandler
+                    newConnection.messageHandlers = self?.messageHandlers ?? [:]
                     newConnection.errorHandler = self?.errorHandler
 
                     newConnection.activate()
@@ -143,12 +183,12 @@ public final class XPCListener {
                         codeSigningRequirement: XPCListener.globalCodeSigningRequirement
                     )
 
-                    connection.messageHandler = XPCListener.globalMessageHandler
+                    connection.messageHandlers = XPCListener.globalMessageHandlers
                     connection.errorHandler = XPCListener.globalErrorHandler
 
                     connection.activate()
                 } catch {
-                    os.Logger().critical("Can’t initialize incoming XPC connection!")
+                    os_log(.fault, "Can’t initialize incoming XPC connection!")
                 }
             }
         case .connection(let connection, _):

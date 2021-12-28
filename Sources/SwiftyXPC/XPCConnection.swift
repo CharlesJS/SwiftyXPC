@@ -1,9 +1,22 @@
-import System
 import XPC
+import Security
+import Foundation
+import System
 
 public class XPCConnection {
-    static let responseKey = "com.charlessoft.SwiftyXPC.XPCEventHandler.ResponseKey"
-    static let errorKey = "com.charlessoft.SwiftyXPC.XPCEventHandler.ErrorKey"
+    public enum Error: Swift.Error, Codable {
+        case missingMessageName
+        case missingMessageBody
+        case unexpectedMessage
+        case typeMismatch(expected: XPCType, actual: XPCType)
+        case callerFailedCredentialCheck(OSStatus) // only used on macOS <= 11.x
+    }
+
+    private struct MessageKeys {
+        static let name = "com.charlessoft.SwiftyXPC.XPCEventHandler.Name"
+        static let body = "com.charlessoft.SwiftyXPC.XPCEventHandler.Body"
+        static let error = "com.charlessoft.SwiftyXPC.XPCEventHandler.Error"
+    }
 
     public enum ConnectionType {
         case anonymousListener
@@ -12,10 +25,35 @@ public class XPCConnection {
         case remoteMachService(serviceName: String, isPrivilegedHelperTool: Bool)
     }
 
-    public typealias MessageHandler = (XPCConnection, [String : Any]) async throws -> [String : Any]?
-    public typealias ErrorHandler = (XPCConnection, Error) -> ()
+    public typealias ErrorHandler = (XPCConnection, Swift.Error) -> ()
+
+    internal class MessageHandler {
+        typealias RawHandler = ((XPCConnection, xpc_object_t) async throws -> xpc_object_t)
+        let closure: RawHandler
+        let requestType: Codable.Type
+        let responseType: Codable.Type
+
+        init<Request: Codable, Response: Codable>(closure: @escaping (XPCConnection, Request) async throws -> Response) {
+            self.requestType = Request.self
+            self.responseType = Response.self
+
+            self.closure = { connection, event in
+                guard let body = xpc_dictionary_get_value(event, MessageKeys.body) else {
+                    throw Error.missingMessageBody
+                }
+
+                let request = try XPCDecoder().decode(type: Request.self, from: body)
+                let response = try await closure(connection, request)
+
+                return try XPCEncoder().encode(response)
+            }
+        }
+    }
 
     private let connection: xpc_connection_t
+
+    @available(macOS, obsoleted: 12.0)
+    private let codeSigningRequirement: String?
 
     internal static func makeAnonymousListenerConnection(codeSigningRequirement: String?) throws -> XPCConnection {
         try .init(connection: xpc_connection_create(nil, nil), codeSigningRequirement: codeSigningRequirement)
@@ -43,8 +81,9 @@ public class XPCConnection {
 
     internal init(connection: xpc_connection_t, codeSigningRequirement: String?) throws {
         self.connection = connection
+        self.codeSigningRequirement = codeSigningRequirement
 
-        if let requirement = codeSigningRequirement {
+        if #available(macOS 12.0, *), let requirement = codeSigningRequirement {
             guard xpc_connection_set_peer_code_signing_requirement(self.connection, requirement) == 0 else {
                 throw XPCError.invalidCodeSignatureRequirement
             }
@@ -53,9 +92,46 @@ public class XPCConnection {
         xpc_connection_set_event_handler(self.connection, self.handleEvent)
     }
 
-    public var messageHandler: MessageHandler? = nil
+    internal var messageHandlers: [String : MessageHandler] = [:]
     public var errorHandler: ErrorHandler? = nil
     internal var customEventHandler: xpc_handler_t? = nil
+
+    internal func getMessageHandler(forName name: String) -> MessageHandler.RawHandler? {
+        self.messageHandlers[name]?.closure
+    }
+
+    public func setMessageHandler(name: String, handler: @escaping (XPCConnection) async throws -> ()) {
+        self.setMessageHandler(name: name) { (connection: XPCConnection, _: XPCNull) async throws -> XPCNull in
+            try await handler(connection)
+            return XPCNull.shared
+        }
+    }
+
+    public func setMessageHandler<Request: Codable>(
+        name: String,
+        handler: @escaping (XPCConnection, Request) async throws -> ()
+    ) {
+        self.setMessageHandler(name: name) { (connection: XPCConnection, request: Request) async throws -> XPCNull in
+            try await handler(connection, request)
+            return XPCNull.shared
+        }
+    }
+
+    public func setMessageHandler<Response: Codable>(
+        name: String,
+        handler: @escaping (XPCConnection) async throws -> Response
+    ) {
+        self.setMessageHandler(name: name) { (connection: XPCConnection, _: XPCNull) in
+            try await handler(connection)
+        }
+    }
+
+    public func setMessageHandler<Request: Codable, Response: Codable>(
+        name: String,
+        handler: @escaping (XPCConnection, Request) async throws -> Response
+    ) {
+        self.messageHandlers[name] = MessageHandler(closure: handler)
+    }
 
     public var auditSessionIdentifier: au_asid_t {
         xpc_connection_get_asid(self.connection)
@@ -93,22 +169,44 @@ public class XPCConnection {
         XPCEndpoint(connection: self.connection)
     }
 
-    public func sendMessage(_ request: [String : Any]) async throws -> [String : Any] {
-        guard let xpcRequest = request.toXPCObject() else { throw Errno.invalidArgument }
+    public func sendMessage(name: String) async throws {
+        try await self.sendMessage(name: name, request: XPCNull.shared)
+    }
+
+    public func sendMessage<Request: Codable>(name: String, request: Request) async throws {
+        _ = try await self.sendMessage(name: name, request: request) as XPCNull
+    }
+
+    public func sendMessage<Response: Codable>(name: String) async throws -> Response {
+        try await self.sendMessage(name: name, request: XPCNull.shared)
+    }
+
+    public func sendMessage<Request: Codable, Response: Codable>(name: String, request: Request) async throws -> Response {
+        let body = try XPCEncoder().encode(request)
 
         return try await withCheckedThrowingContinuation { continuation in
-            xpc_connection_send_message_with_reply(self.connection, xpcRequest, nil) { event in
+            let message = xpc_dictionary_create(nil, nil, 0)
+
+            xpc_dictionary_set_string(message, MessageKeys.name, name)
+            xpc_dictionary_set_value(message, MessageKeys.body, body)
+
+            xpc_connection_send_message_with_reply(self.connection, message, nil) { event in
                 do {
-                    guard xpc_get_type(event) == XPC_TYPE_DICTIONARY,
-                          let reply = [String : Any].fromXPCObject(event) else {
-                              throw XPCError(error: event)
+                    switch event.type {
+                    case .dictionary: break
+                    case .error: throw XPCError(error: event)
+                    default: throw Error.typeMismatch(expected: .dictionary, actual: event.type)
                     }
 
-                    guard let response = reply[Self.responseKey] as? [String : Any] else {
-                        throw reply[Self.errorKey] as? Error ?? Errno.invalidArgument
+                    if let error = xpc_dictionary_get_value(event, MessageKeys.error) {
+                        throw try XPCErrorRegistry.shared.decodeError(error)
                     }
 
-                    continuation.resume(returning: response)
+                    guard let body = xpc_dictionary_get_value(event, MessageKeys.body) else {
+                        throw Error.missingMessageBody
+                    }
+
+                    continuation.resume(returning: try XPCDecoder().decode(type: Response.self, from: body))
                 } catch {
                     continuation.resume(throwing: error)
                 }
@@ -116,12 +214,38 @@ public class XPCConnection {
         }
     }
 
-    public func sendOnewayMessage(_ message: [String : Any]) throws {
-        try self.sendOnewayMessage(message, asReplyTo: nil)
+    public func sendOnewayMessage<Message: Codable>(message: Message, withName name: String? = nil) throws {
+        try self.sendOnewayRawMessage(name: name, body: XPCEncoder().encode(message), key: MessageKeys.body, asReplyTo: nil)
     }
 
-    private func sendOnewayMessage(_ message: [String : Any], asReplyTo original: xpc_object_t?) throws {
-        guard let xpcMessage = message.toXPCObject(replyTo: original) else { throw Errno.invalidArgument }
+    private func sendOnewayError(error: Swift.Error, asReplyTo original: xpc_object_t?) throws {
+        try self.sendOnewayRawMessage(
+            name: nil,
+            body: XPCErrorRegistry.shared.encodeError(error),
+            key: MessageKeys.error,
+            asReplyTo: original
+        )
+    }
+
+    private func sendOnewayRawMessage(
+        name: String?,
+        body: xpc_object_t,
+        key: String,
+        asReplyTo original: xpc_object_t?
+    ) throws {
+        let xpcMessage: xpc_object_t
+        if let original = original, let reply = xpc_dictionary_create_reply(original) {
+            xpcMessage = reply
+        } else {
+            xpcMessage = xpc_dictionary_create(nil, nil, 0)
+        }
+
+        if let name = name {
+            xpc_dictionary_set_string(xpcMessage, MessageKeys.name, name)
+        }
+
+        xpc_dictionary_set_value(xpcMessage, key, body)
+
         xpc_connection_send_message(self.connection, xpcMessage)
     }
 
@@ -130,29 +254,117 @@ public class XPCConnection {
     }
 
     private func handleEvent(_ event: xpc_object_t) {
+        if #available(macOS 12.0, *) {} else {
+            do {
+                try self.checkCallerCredentials(event: event)
+            } catch {
+                self.errorHandler?(self, error)
+                return
+            }
+        }
+
         if let customEventHandler = self.customEventHandler {
             customEventHandler(event)
             return
         }
 
-        let type = xpc_get_type(event)
+        do {
+            switch event.type {
+            case .dictionary:
+                if let error = xpc_dictionary_get_value(event, MessageKeys.error) {
+                    throw try XPCErrorRegistry.shared.decodeError(error)
+                }
 
-        guard type == XPC_TYPE_DICTIONARY, let message = [String : Any].fromXPCObject(event) else {
-            self.errorHandler?(self, type == XPC_TYPE_ERROR ? XPCError(error: event) : Errno.badFileTypeOrFormat)
+                self.respond(to: event)
+            case .error:
+                throw XPCError(error: event)
+            default:
+                throw Error.typeMismatch(expected: .dictionary, actual: event.type)
+            }
+        } catch {
+            self.errorHandler?(self, error)
+            return
+        }
+    }
+
+    @available(macOS, obsoleted: 12.0)
+    private func checkCallerCredentials(event: xpc_object_t) throws {
+        guard let requirementString = self.codeSigningRequirement else { return }
+
+        var code: SecCode? = nil
+        var err: OSStatus
+
+        if #available(macOS 11.0, *) {
+            err = SecCodeCreateWithXPCMessage(event, [], &code)
+        } else {
+            var keyCB = kCFTypeDictionaryKeyCallBacks
+            var valueCB = kCFTypeDictionaryValueCallBacks
+            let key = kSecGuestAttributePid
+            var pid = Int64(xpc_connection_get_pid(xpc_dictionary_get_remote_connection(event)!))
+            let value = CFNumberCreate(kCFAllocatorDefault, .sInt64Type, &pid)
+            let attributes = CFDictionaryCreateMutable(kCFAllocatorDefault, 1, &keyCB, &valueCB)
+
+            CFDictionarySetValue(
+                attributes,
+                unsafeBitCast(key, to: UnsafeRawPointer.self),
+                unsafeBitCast(value, to: UnsafeRawPointer.self)
+            )
+
+            err = SecCodeCopyGuestWithAttributes(nil, attributes, [], &code)
+        }
+
+        guard err == errSecSuccess else {
+            throw Error.callerFailedCredentialCheck(err)
+        }
+
+        let cfRequirementString = requirementString.withCString {
+            CFStringCreateWithCString(kCFAllocatorDefault, $0, CFStringBuiltInEncodings.UTF8.rawValue)
+        }
+
+        var requirement: SecRequirement? = nil
+        err = SecRequirementCreateWithString(cfRequirementString!, [], &requirement)
+        guard err == errSecSuccess else {
+            throw Error.callerFailedCredentialCheck(err)
+        }
+
+        err = SecCodeCheckValidity(code!, [], requirement)
+        guard err == errSecSuccess else {
+            throw Error.callerFailedCredentialCheck(err)
+        }
+    }
+
+    private func respond(to event: xpc_object_t) {
+        let messageHandler: MessageHandler.RawHandler
+
+        do {
+            guard let name = xpc_dictionary_get_value(event, MessageKeys.name).flatMap({ String($0) }) else {
+                throw Error.missingMessageName
+            }
+
+            guard let _messageHandler = self.getMessageHandler(forName: name) else {
+                throw Error.unexpectedMessage
+            }
+
+            messageHandler = _messageHandler
+        } catch {
+            self.errorHandler?(self, error)
             return
         }
 
         Task {
+            let response: xpc_object_t
+
             do {
-                if let response = try await self.messageHandler?(self, message) {
-                    do {
-                        try self.sendOnewayMessage([Self.responseKey : response], asReplyTo: event)
-                    } catch {
-                        self.errorHandler?(self, error)
-                    }
-                }
+                response = try await messageHandler(self, event)
             } catch {
-                try self.sendOnewayMessage([Self.errorKey : error], asReplyTo: event)
+                try self.sendOnewayError(error: error, asReplyTo: event)
+                return
+            }
+
+            do {
+                try self.sendOnewayRawMessage(name: nil, body: response, key: MessageKeys.body, asReplyTo: event)
+            } catch {
+                self.errorHandler?(self, error)
             }
         }
     }
