@@ -277,6 +277,10 @@ public class XPCEncoder {
                 self.encode(xpcValue: xpc)
             } else if value is XPCNull {
                 self.encode(xpcValue: xpc_null_create())
+            } else if let byte = value as? Int8 {
+                self.encodeByte(byte)
+            } else if let byte = value as? UInt8 {
+                self.encodeByte(byte)
             } else {
                 self.encodeNil() // leave placeholder which will be overwritten later
 
