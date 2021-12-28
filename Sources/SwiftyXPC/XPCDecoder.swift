@@ -112,7 +112,16 @@ public final class XPCDecoder {
 
         func contains(_ key: Key) -> Bool { (try? self.getValue(for: key)) != nil }
 
-        private func getValue(for key: CodingKey) throws -> xpc_object_t {
+        private func getValue(for key: CodingKey, allowNull: Bool = false) throws -> xpc_object_t {
+            guard let value = try self.getOptionalValue(for: key, allowNull: allowNull) else {
+                let context = self.makeErrorContext(description: "No value for key '\(key.stringValue)'")
+                throw DecodingError.valueNotFound(Any.self, context)
+            }
+
+            return value
+        }
+
+        private func getOptionalValue(for key: CodingKey, allowNull: Bool = false) throws -> xpc_object_t? {
             try key.stringValue.withCString {
                 if !self.checkedType {
                     guard xpc_get_type(dict) == XPC_TYPE_DICTIONARY else {
@@ -126,9 +135,10 @@ public final class XPCDecoder {
                     self.checkedType = true
                 }
 
-                guard let value = xpc_dictionary_get_value(self.dict, $0) else {
-                    let context = self.makeErrorContext(description: "No value for key '\(key.stringValue)'")
-                    throw DecodingError.valueNotFound(Any.self, context)
+                let value = xpc_dictionary_get_value(self.dict, $0)
+
+                if !allowNull, let value = value, case .null = value.type {
+                    return nil
                 }
 
                 return value
@@ -136,7 +146,7 @@ public final class XPCDecoder {
         }
 
         func decodeNil(forKey key: Key) throws -> Bool {
-            xpc_get_type(try self.getValue(for: key)) == XPC_TYPE_NULL
+            xpc_get_type(try self.getValue(for: key, allowNull: true)) == XPC_TYPE_NULL
         }
 
         func decode(_ type: Bool.Type, forKey key: Key) throws -> Bool {
@@ -196,63 +206,63 @@ public final class XPCDecoder {
         }
 
         func decodeIfPresent(_ type: Bool.Type, forKey key: Key) throws -> Bool? {
-            try self.decodeBool(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeBool(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: String.Type, forKey key: Key) throws -> String? {
-            try self.decodeString(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeString(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: Double.Type, forKey key: Key) throws -> Double? {
-            try self.decodeFloatingPoint(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeFloatingPoint(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: Float.Type, forKey key: Key) throws -> Float? {
-            try self.decodeFloatingPoint(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeFloatingPoint(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: Int.Type, forKey key: Key) throws -> Int? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: Int8.Type, forKey key: Key) throws -> Int8? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: Int16.Type, forKey key: Key) throws -> Int16? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: Int32.Type, forKey key: Key) throws -> Int32? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: Int64.Type, forKey key: Key) throws -> Int64? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: UInt.Type, forKey key: Key) throws -> UInt? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: UInt8.Type, forKey key: Key) throws -> UInt8? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: UInt16.Type, forKey key: Key) throws -> UInt16? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: UInt32.Type, forKey key: Key) throws -> UInt32? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decodeIfPresent(_ type: UInt64.Type, forKey key: Key) throws -> UInt64? {
-            try self.decodeInteger(xpc: self.getValue(for: key))
+            try self.getOptionalValue(for: key).map { try self.decodeInteger(xpc: $0) }
         }
 
         func decode<T: Decodable>(_ type: T.Type, forKey key: Key) throws -> T {
-            let xpc = try self.getValue(for: key)
+            let xpc = try self.getValue(for: key, allowNull: true)
             let codingPath = self.codingPath + [key]
 
             if type == XPCFileDescriptor.self {
