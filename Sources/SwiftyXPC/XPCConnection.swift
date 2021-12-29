@@ -32,8 +32,6 @@ public class XPCConnection {
 
     /// Represents the various types of connection that can be created.
     public enum ConnectionType {
-        /// This is deprecated and will be removed soon. Use `XPCListener` instead.
-        case anonymousListener
         /// Connect to an embedded XPC service inside the current application’s bundle. Pass the XPC service’s bundle ID as the `bundleID` parameter.
         case remoteService(bundleID: String)
         /// Create a connection from a passed-in endpoint, which typically will come embedded in an XPC message.
@@ -86,8 +84,6 @@ public class XPCConnection {
     /// - Throws: Any errors that come up in the process of initializing the connection.
     public convenience init(type: ConnectionType, codeSigningRequirement requirement: String? = nil) throws {
         switch type {
-        case .anonymousListener:
-            try self.init(connection: xpc_connection_create(nil, nil), codeSigningRequirement: requirement)
         case .remoteService(let bundleID):
             try self.init(connection: xpc_connection_create(bundleID, nil), codeSigningRequirement: requirement)
         case .remoteServiceFromEndpoint(let endpoint):
