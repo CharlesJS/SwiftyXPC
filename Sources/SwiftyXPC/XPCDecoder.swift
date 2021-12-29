@@ -273,6 +273,10 @@ public final class XPCDecoder {
                 try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: xpc)
 
                 return FileDescriptor(rawValue: xpc_fd_dup(xpc)) as! T
+            } else if type == XPCEndpoint.self {
+                try checkType(xpcType: XPC_TYPE_ENDPOINT, swiftType: XPCEndpoint.self, xpc: xpc)
+
+                return XPCEndpoint(endpoint: xpc) as! T
             } else if type == XPCNull.self {
                 try checkType(xpcType: XPC_TYPE_NULL, swiftType: XPCNull.self, xpc: xpc)
 
@@ -510,6 +514,10 @@ public final class XPCDecoder {
                 let xpc = try self.readNext(xpcType: XPC_TYPE_FD, swiftType: type)
 
                 return FileDescriptor(rawValue: xpc_fd_dup(xpc)) as! T
+            } else if type == XPCEndpoint.self {
+                let xpc = try self.readNext(xpcType: XPC_TYPE_ENDPOINT, swiftType: type)
+
+                return XPCEndpoint(endpoint: xpc) as! T
             } else if type == XPCNull.self {
                 _ = try self.readNext(xpcType: XPC_TYPE_NULL, swiftType: XPCNull.self)
 
@@ -596,6 +604,10 @@ public final class XPCDecoder {
                 try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: self.xpc)
 
                 return FileDescriptor(rawValue: xpc_fd_dup(self.xpc)) as! T
+            } else if type == XPCEndpoint.self {
+                try checkType(xpcType: XPC_TYPE_ENDPOINT, swiftType: type, xpc: self.xpc)
+
+                return XPCEndpoint(endpoint: self.xpc) as! T
             } else if type == XPCNull.self {
                 try checkType(xpcType: XPC_TYPE_NULL, swiftType: XPCNull.self, xpc: self.xpc)
 

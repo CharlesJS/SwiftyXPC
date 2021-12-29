@@ -16,10 +16,14 @@ public struct XPCEndpoint: Codable {
         var localizedDescription: String { "XPCEndpoint can only be encoded via XPCEncoder." }
     }
 
-    private let endpoint: xpc_endpoint_t
+    internal let endpoint: xpc_endpoint_t
 
     internal init(connection: xpc_connection_t) {
         self.endpoint = xpc_endpoint_create(connection)
+    }
+
+    internal init(endpoint: xpc_endpoint_t) {
+        self.endpoint = endpoint
     }
 
     internal func makeConnection() -> xpc_connection_t {

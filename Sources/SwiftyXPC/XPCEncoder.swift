@@ -100,6 +100,8 @@ public class XPCEncoder {
                       let fileDescriptor = value as? FileDescriptor,
                       let xpc = xpc_fd_create(fileDescriptor.rawValue) {
                 self.encode(xpcValue: xpc, for: key)
+            } else if let endpoint = value as? XPCEndpoint {
+                self.encode(xpcValue: endpoint.endpoint, for: key)
             } else if value is XPCNull {
                 self.encode(xpcValue: xpc_null_create(), for: key)
             } else {
@@ -275,6 +277,8 @@ public class XPCEncoder {
                       let fileDescriptor = value as? FileDescriptor,
                       let xpc = xpc_fd_create(fileDescriptor.rawValue) {
                 self.encode(xpcValue: xpc)
+            } else if let endpoint = value as? XPCEndpoint {
+                self.encode(xpcValue: endpoint.endpoint)
             } else if value is XPCNull {
                 self.encode(xpcValue: xpc_null_create())
             } else if let byte = value as? Int8 {
@@ -391,6 +395,8 @@ public class XPCEncoder {
                       let fileDescriptor = value as? FileDescriptor,
                       let xpc = xpc_fd_create(fileDescriptor.rawValue) {
                 self.encode(xpcValue: xpc)
+            } else if let endpoint = value as? XPCEndpoint {
+                self.encode(xpcValue: endpoint.endpoint)
             } else if value is XPCNull {
                 self.encode(xpcValue: xpc_null_create())
             } else {
