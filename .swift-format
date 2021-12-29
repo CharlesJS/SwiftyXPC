@@ -5,5 +5,9 @@
     "spaces": 4
   },
   "maximumBlankLines": 1,
-  "FileScopedDeclarationPrivacy": "private"
+  "rules": {
+    "AllPublicDeclarationsHaveDocumentation": true,
+    "BeginDocumentationCommentWithOneLineSummary": true,
+    "ValidateDocumentationComments": true,
+  }
 }

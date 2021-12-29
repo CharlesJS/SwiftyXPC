@@ -7,6 +7,7 @@
 
 import XPC
 
+/// Enum representing the type of an XPC object.
 public enum XPCType: Codable {
     case activity
     case array
@@ -66,6 +67,7 @@ public enum XPCType: Codable {
         }
     }
 
+    /// The name of this type, which can be useful for debugging purposes.
     public var name: String {
         switch self {
         case .activity:
@@ -109,5 +111,6 @@ public enum XPCType: Codable {
 }
 
 extension xpc_object_t {
+    /// The type of a raw `xpc_object_t`, represented as an `XPCType`.
     var type: XPCType { XPCType(rawType: xpc_get_type(self)) }
 }

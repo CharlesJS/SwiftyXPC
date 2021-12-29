@@ -24,6 +24,7 @@ extension XPCEncodingContainer {
     fileprivate func finalize() {}
 }
 
+/// An implementation of `Encoder` that can encode values to be sent over an XPC connection.
 public class XPCEncoder {
     internal enum Key: CodingKey {
         case arrayIndex(Int)
@@ -513,6 +514,9 @@ public class XPCEncoder {
 
     private let original: xpc_object_t?
 
+    /// Create an `XPCEncoder`.
+    ///
+    /// - Parameter original: An optional incoming XPC event object to which the encoded value should be a reply. This event must be a dictionary.
     public init(replyingTo original: xpc_object_t? = nil) {
         if let original = original {
             precondition(xpc_get_type(original) == XPC_TYPE_DICTIONARY, "XPC replies must be to dictionaries")
@@ -521,6 +525,13 @@ public class XPCEncoder {
         self.original = original
     }
 
+    /// Encode a value to an XPC object.
+    ///
+    /// - Parameter value: The value to be encoded.
+    ///
+    /// - Returns: The encoded value, as an `xpc_object_t`.
+    ///
+    /// - Throws: Any errors that come up in the process of encoding the value.
     public func encode<T: Encodable>(_ value: T) throws -> xpc_object_t {
         let encoder = _XPCEncoder(parentXPC: nil, codingPath: [], replyingTo: self.original)
 

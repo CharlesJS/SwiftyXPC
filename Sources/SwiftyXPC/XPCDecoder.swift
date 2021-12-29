@@ -82,6 +82,7 @@ extension XPCDecodingContainer {
     }
 }
 
+/// An implementation of `Decoder` that can decode values sent over an XPC connection.
 public final class XPCDecoder {
     private final class KeyedContainer<Key: CodingKey>: KeyedDecodingContainerProtocol, XPCDecodingContainer {
         let dict: xpc_object_t
@@ -651,8 +652,18 @@ public final class XPCDecoder {
         }
     }
 
+    /// Create an `XPCDecoder`.
     public init() {}
 
+    /// Decode an XPC object originating from a remote connection.
+    ///
+    /// - Parameters:
+    ///   - type: The expected type of the decoded object.
+    ///   - xpcObject: The XPC object to decode.
+    ///
+    /// - Returns: The decoded value.
+    ///
+    /// - Throws: Any errors that come up in the process of decoding the XPC object.
     public func decode<T: Decodable>(type: T.Type, from xpcObject: xpc_object_t) throws -> T {
         let decoder = _XPCDecoder(xpc: xpcObject, codingPath: [])
         let container = decoder.singleValueContainer()
