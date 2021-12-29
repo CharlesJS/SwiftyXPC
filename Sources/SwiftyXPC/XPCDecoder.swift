@@ -643,7 +643,8 @@ public final class XPCDecoder {
 
     public func decode<T: Decodable>(type: T.Type, from xpcObject: xpc_object_t) throws -> T {
         let decoder = _XPCDecoder(xpc: xpcObject, codingPath: [])
+        let container = decoder.singleValueContainer()
 
-        return try type.init(from: decoder)
+        return try container.decode(type)
     }
 }
