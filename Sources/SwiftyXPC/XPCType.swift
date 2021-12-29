@@ -1,6 +1,6 @@
 //
 //  XPCType.swift
-//  
+//
 //
 //  Created by Charles Srstka on 12/20/21.
 //

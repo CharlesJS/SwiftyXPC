@@ -5,10 +5,10 @@
 //  Created by Charles Srstka on 8/8/21.
 //
 
-import XPC
-import System
-import os
 import Foundation
+import System
+import XPC
+import os
 
 public final class XPCListener {
     public enum ListenerType {
@@ -35,12 +35,12 @@ public final class XPCListener {
     }
 
     // because xpc_main takes a C function that can't capture any context, we need to store these globally
-    private static var globalMessageHandlers: [String : XPCConnection.MessageHandler] = [:]
+    private static var globalMessageHandlers: [String: XPCConnection.MessageHandler] = [:]
     private static var globalErrorHandler: XPCConnection.ErrorHandler? = nil
     private static var globalCodeSigningRequirement: String? = nil
 
-    private var _messageHandlers: [String : XPCConnection.MessageHandler] = [:]
-    private var messageHandlers: [String : XPCConnection.MessageHandler] {
+    private var _messageHandlers: [String: XPCConnection.MessageHandler] = [:]
+    private var messageHandlers: [String: XPCConnection.MessageHandler] {
         switch self.backing {
         case .xpcMain:
             return Self.globalMessageHandlers
@@ -58,7 +58,7 @@ public final class XPCListener {
         }
     }
 
-    public func setMessageHandler(name: String, handler: @escaping (XPCConnection) async throws -> ()) {
+    public func setMessageHandler(name: String, handler: @escaping (XPCConnection) async throws -> Void) {
         self.setMessageHandler(name: name) { (connection: XPCConnection, _: XPCNull) async throws -> XPCNull in
             try await handler(connection)
             return XPCNull.shared
@@ -67,7 +67,7 @@ public final class XPCListener {
 
     public func setMessageHandler<Request: Codable>(
         name: String,
-        handler: @escaping (XPCConnection, Request) async throws -> ()
+        handler: @escaping (XPCConnection, Request) async throws -> Void
     ) {
         self.setMessageHandler(name: name) { (connection: XPCConnection, request: Request) async throws -> XPCNull in
             try await handler(connection, request)
@@ -136,7 +136,7 @@ public final class XPCListener {
         case .service:
             self.backing = .xpcMain
             Self.globalCodeSigningRequirement = requirement
-        case .machService(name: let name):
+        case .machService(let name):
             let connection = try XPCConnection(
                 machServiceName: name,
                 flags: XPC_CONNECTION_MACH_SERVICE_LISTENER,

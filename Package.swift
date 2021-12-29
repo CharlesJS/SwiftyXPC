@@ -7,13 +7,13 @@ let package = Package(
     name: "SwiftyXPC",
     platforms: [
         .macOS(.v10_15),
-        .macCatalyst(.v13)
+        .macCatalyst(.v13),
     ],
     products: [
         .library(
             name: "SwiftyXPC",
             targets: ["SwiftyXPC"]
-        ),
+        )
     ],
     dependencies: [],
     targets: [

@@ -1,7 +1,7 @@
-import XPC
-import Security
 import Foundation
+import Security
 import System
+import XPC
 
 public class XPCConnection {
     public enum Error: Swift.Error, Codable {
@@ -9,7 +9,7 @@ public class XPCConnection {
         case missingMessageBody
         case unexpectedMessage
         case typeMismatch(expected: XPCType, actual: XPCType)
-        case callerFailedCredentialCheck(OSStatus) // only used on macOS <= 11.x
+        case callerFailedCredentialCheck(OSStatus)  // only used on macOS <= 11.x
     }
 
     private struct MessageKeys {
@@ -25,7 +25,7 @@ public class XPCConnection {
         case remoteMachService(serviceName: String, isPrivilegedHelperTool: Bool)
     }
 
-    public typealias ErrorHandler = (XPCConnection, Swift.Error) -> ()
+    public typealias ErrorHandler = (XPCConnection, Swift.Error) -> Void
 
     internal class MessageHandler {
         typealias RawHandler = ((XPCConnection, xpc_object_t) async throws -> xpc_object_t)
@@ -92,7 +92,7 @@ public class XPCConnection {
         xpc_connection_set_event_handler(self.connection, self.handleEvent)
     }
 
-    internal var messageHandlers: [String : MessageHandler] = [:]
+    internal var messageHandlers: [String: MessageHandler] = [:]
     public var errorHandler: ErrorHandler? = nil
     internal var customEventHandler: xpc_handler_t? = nil
 
@@ -100,7 +100,7 @@ public class XPCConnection {
         self.messageHandlers[name]?.closure
     }
 
-    public func setMessageHandler(name: String, handler: @escaping (XPCConnection) async throws -> ()) {
+    public func setMessageHandler(name: String, handler: @escaping (XPCConnection) async throws -> Void) {
         self.setMessageHandler(name: name) { (connection: XPCConnection, _: XPCNull) async throws -> XPCNull in
             try await handler(connection)
             return XPCNull.shared
@@ -109,7 +109,7 @@ public class XPCConnection {
 
     public func setMessageHandler<Request: Codable>(
         name: String,
-        handler: @escaping (XPCConnection, Request) async throws -> ()
+        handler: @escaping (XPCConnection, Request) async throws -> Void
     ) {
         self.setMessageHandler(name: name) { (connection: XPCConnection, request: Request) async throws -> XPCNull in
             try await handler(connection, request)
@@ -249,12 +249,13 @@ public class XPCConnection {
         xpc_connection_send_message(self.connection, xpcMessage)
     }
 
-    public func sendBarrier(_ barrier: @escaping () -> ()) {
+    public func sendBarrier(_ barrier: @escaping () -> Void) {
         xpc_connection_send_barrier(self.connection, barrier)
     }
 
     private func handleEvent(_ event: xpc_object_t) {
-        if #available(macOS 12.0, *) {} else {
+        if #available(macOS 12.0, *) {
+        } else {
             do {
                 try self.checkCallerCredentials(event: event)
             } catch {

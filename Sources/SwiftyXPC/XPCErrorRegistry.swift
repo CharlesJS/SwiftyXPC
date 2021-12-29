@@ -1,6 +1,6 @@
 //
 //  XPCErrorRegistry.swift
-//  
+//
 //
 //  Created by Charles Srstka on 12/19/21.
 //
@@ -10,8 +10,8 @@ import XPC
 public class XPCErrorRegistry {
     public static let shared = XPCErrorRegistry()
 
-    private var errorDomainMap: [String : (Error & Codable).Type] = [
-        String(reflecting: XPCError.self) : XPCError.self,
+    private var errorDomainMap: [String: (Error & Codable).Type] = [
+        String(reflecting: XPCError.self): XPCError.self,
         String(reflecting: XPCConnection.Error.self): XPCConnection.Error.self,
     ]
 
@@ -65,7 +65,7 @@ public class XPCErrorRegistry {
             }
         }
 
-        public var errorUserInfo: [String : Any] { [:] }
+        public var errorUserInfo: [String: Any] { [:] }
 
         public init(domain: String, code: Int) {
             self.errorDomain = domain
@@ -89,7 +89,8 @@ public class XPCErrorRegistry {
             let code = try container.decode(Int.self, forKey: .code)
 
             if let codableType = XPCErrorRegistry.shared.errorDomainMap[self.errorDomain],
-               let codableError = try codableType.decodeIfPresent(from: container, key: .encodedError) {
+                let codableError = try codableType.decodeIfPresent(from: container, key: .encodedError)
+            {
                 self.storage = .codable(codableError)
             } else {
                 self.storage = .uncodable(code: code)
@@ -109,20 +110,21 @@ public class XPCErrorRegistry {
     }
 }
 
-private extension Error where Self: Codable {
-    static func decode(from error: xpc_object_t, using decoder: XPCDecoder) throws -> Error {
+extension Error where Self: Codable {
+    fileprivate static func decode(from error: xpc_object_t, using decoder: XPCDecoder) throws -> Error {
         try decoder.decode(type: self, from: error)
     }
 
-    static func decodeIfPresent<Key>(from keyedContainer: KeyedDecodingContainer<Key>, key: Key) throws -> Self? {
+    fileprivate static func decodeIfPresent<Key>(from keyedContainer: KeyedDecodingContainer<Key>, key: Key) throws -> Self?
+    {
         try keyedContainer.decodeIfPresent(Self.self, forKey: key)
     }
 
-    func encode(using encoder: XPCEncoder) throws -> xpc_object_t {
+    fileprivate func encode(using encoder: XPCEncoder) throws -> xpc_object_t {
         try encoder.encode(self)
     }
 
-    func encode<Key>(into keyedContainer: inout KeyedEncodingContainer<Key>, forKey key: Key) throws {
+    fileprivate func encode<Key>(into keyedContainer: inout KeyedEncodingContainer<Key>, forKey key: Key) throws {
         try keyedContainer.encode(self, forKey: key)
     }
 }

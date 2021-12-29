@@ -10,12 +10,12 @@ import XPC
 private protocol XPCDecodingContainer {
     var codingPath: [CodingKey] { get }
 }
-private extension XPCDecodingContainer {
-    func makeErrorContext(description: String, underlyingError: Error? = nil) -> DecodingError.Context {
+extension XPCDecodingContainer {
+    fileprivate func makeErrorContext(description: String, underlyingError: Error? = nil) -> DecodingError.Context {
         DecodingError.Context(codingPath: self.codingPath, debugDescription: description, underlyingError: underlyingError)
     }
 
-    func checkType(xpcType: xpc_type_t, swiftType: Any.Type, xpc: xpc_object_t) throws {
+    fileprivate func checkType(xpcType: xpc_type_t, swiftType: Any.Type, xpc: xpc_object_t) throws {
         if xpc_get_type(xpc) != xpcType {
             let expectedTypeName = String(cString: xpc_type_get_name(xpcType))
             let actualTypeName = String(cString: xpc_type_get_name(xpc_get_type(xpc)))
@@ -28,17 +28,17 @@ private extension XPCDecodingContainer {
         }
     }
 
-    func decodeNil(xpc: xpc_object_t) throws {
+    fileprivate func decodeNil(xpc: xpc_object_t) throws {
         try self.checkType(xpcType: XPC_TYPE_NULL, swiftType: Any?.self, xpc: xpc)
     }
 
-    func decodeBool(xpc: xpc_object_t) throws -> Bool {
+    fileprivate func decodeBool(xpc: xpc_object_t) throws -> Bool {
         try self.checkType(xpcType: XPC_TYPE_BOOL, swiftType: Bool.self, xpc: xpc)
 
         return xpc_bool_get_value(xpc)
     }
 
-    func decodeInteger<I: FixedWidthInteger & SignedInteger>(xpc: xpc_object_t) throws -> I {
+    fileprivate func decodeInteger<I: FixedWidthInteger & SignedInteger>(xpc: xpc_object_t) throws -> I {
         try self.checkType(xpcType: XPC_TYPE_INT64, swiftType: I.self, xpc: xpc)
         let int = xpc_int64_get_value(xpc)
 
@@ -50,7 +50,7 @@ private extension XPCDecodingContainer {
         }
     }
 
-    func decodeInteger<I: FixedWidthInteger & UnsignedInteger>(xpc: xpc_object_t) throws -> I {
+    fileprivate func decodeInteger<I: FixedWidthInteger & UnsignedInteger>(xpc: xpc_object_t) throws -> I {
         try self.checkType(xpcType: XPC_TYPE_UINT64, swiftType: I.self, xpc: xpc)
         let int = xpc_uint64_get_value(xpc)
 
@@ -62,13 +62,13 @@ private extension XPCDecodingContainer {
         }
     }
 
-    func decodeFloatingPoint<F: BinaryFloatingPoint>(xpc: xpc_object_t) throws -> F {
+    fileprivate func decodeFloatingPoint<F: BinaryFloatingPoint>(xpc: xpc_object_t) throws -> F {
         try self.checkType(xpcType: XPC_TYPE_DOUBLE, swiftType: F.self, xpc: xpc)
 
         return F(xpc_double_get_value(xpc))
     }
 
-    func decodeString(xpc: xpc_object_t) throws -> String {
+    fileprivate func decodeString(xpc: xpc_object_t) throws -> String {
         try self.checkType(xpcType: XPC_TYPE_STRING, swiftType: String.self, xpc: xpc)
 
         let length = xpc_string_get_length(xpc)
@@ -127,9 +127,9 @@ public final class XPCDecoder {
                     guard xpc_get_type(dict) == XPC_TYPE_DICTIONARY else {
                         let type = String(cString: xpc_type_get_name(xpc_get_type(dict)))
                         let desc = "Unexpected type for KeyedContainer wrapped object: expected dictionary, got \(type)"
-                        let context = self.makeErrorContext( description: desc)
+                        let context = self.makeErrorContext(description: desc)
 
-                        throw DecodingError.typeMismatch([String : Any].self, context)
+                        throw DecodingError.typeMismatch([String: Any].self, context)
                     }
 
                     self.checkedType = true
@@ -352,7 +352,7 @@ public final class XPCDecoder {
                     let description = "Expected dictionary, got \(type))"
                     let context = DecodingError.Context(codingPath: codingPath, debugDescription: description)
 
-                    throw DecodingError.typeMismatch([String : Any].self, context)
+                    throw DecodingError.typeMismatch([String: Any].self, context)
                 }
 
                 guard let xpc = xpc_dictionary_get_value(dict, XPCEncoder.UnkeyedContainerDictionaryKeys.contents) else {
@@ -621,7 +621,7 @@ public final class XPCDecoder {
     private final class _XPCDecoder: Decoder {
         let xpc: xpc_object_t
         let codingPath: [CodingKey]
-        var userInfo: [CodingUserInfoKey : Any] { [:] }
+        var userInfo: [CodingUserInfoKey: Any] { [:] }
         private var hasCreatedContainer = false
 
         init(xpc: xpc_object_t, codingPath: [CodingKey]) {

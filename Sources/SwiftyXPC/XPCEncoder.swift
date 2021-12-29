@@ -13,15 +13,15 @@ private protocol XPCEncodingContainer {
     func finalize()
 }
 
-private extension XPCEncodingContainer {
-    func encodeNil() -> xpc_object_t { xpc_null_create() }
-    func encodeBool(_ flag: Bool) -> xpc_object_t { xpc_bool_create(flag) }
-    func encodeInteger<I: SignedInteger>(_ i: I) -> xpc_object_t { xpc_int64_create(Int64(i)) }
-    func encodeInteger<I: UnsignedInteger>(_ i: I) -> xpc_object_t { xpc_uint64_create(UInt64(i)) }
-    func encodeFloat<F: BinaryFloatingPoint>(_ f: F) -> xpc_object_t { xpc_double_create(Double(f)) }
-    func encodeString(_ string: String) -> xpc_object_t { xpc_string_create(string) }
+extension XPCEncodingContainer {
+    fileprivate func encodeNil() -> xpc_object_t { xpc_null_create() }
+    fileprivate func encodeBool(_ flag: Bool) -> xpc_object_t { xpc_bool_create(flag) }
+    fileprivate func encodeInteger<I: SignedInteger>(_ i: I) -> xpc_object_t { xpc_int64_create(Int64(i)) }
+    fileprivate func encodeInteger<I: UnsignedInteger>(_ i: I) -> xpc_object_t { xpc_uint64_create(UInt64(i)) }
+    fileprivate func encodeFloat<F: BinaryFloatingPoint>(_ f: F) -> xpc_object_t { xpc_double_create(Double(f)) }
+    fileprivate func encodeString(_ string: String) -> xpc_object_t { xpc_string_create(string) }
 
-    func finalize() {}
+    fileprivate func finalize() {}
 }
 
 public class XPCEncoder {
@@ -97,8 +97,9 @@ public class XPCEncoder {
             if let fileDescriptor = value as? XPCFileDescriptor, let xpc = xpc_fd_create(fileDescriptor.fileDescriptor) {
                 self.encode(xpcValue: xpc, for: key)
             } else if #available(macOS 11.0, *),
-                      let fileDescriptor = value as? FileDescriptor,
-                      let xpc = xpc_fd_create(fileDescriptor.rawValue) {
+                let fileDescriptor = value as? FileDescriptor,
+                let xpc = xpc_fd_create(fileDescriptor.rawValue)
+            {
                 self.encode(xpcValue: xpc, for: key)
             } else if let endpoint = value as? XPCEndpoint {
                 self.encode(xpcValue: endpoint.endpoint, for: key)
@@ -274,8 +275,9 @@ public class XPCEncoder {
             if let fileDescriptor = value as? XPCFileDescriptor, let xpc = xpc_fd_create(fileDescriptor.fileDescriptor) {
                 self.encode(xpcValue: xpc)
             } else if #available(macOS 11.0, *),
-                      let fileDescriptor = value as? FileDescriptor,
-                      let xpc = xpc_fd_create(fileDescriptor.rawValue) {
+                let fileDescriptor = value as? FileDescriptor,
+                let xpc = xpc_fd_create(fileDescriptor.rawValue)
+            {
                 self.encode(xpcValue: xpc)
             } else if let endpoint = value as? XPCEndpoint {
                 self.encode(xpcValue: endpoint.endpoint)
@@ -286,7 +288,7 @@ public class XPCEncoder {
             } else if let byte = value as? UInt8 {
                 self.encodeByte(byte)
             } else {
-                self.encodeNil() // leave placeholder which will be overwritten later
+                self.encodeNil()  // leave placeholder which will be overwritten later
 
                 guard case .array(let array) = self.storage else {
                     preconditionFailure("encodeNil() should have converted storage to array")
@@ -392,8 +394,9 @@ public class XPCEncoder {
             if let fileDescriptor = value as? XPCFileDescriptor, let xpc = xpc_fd_create(fileDescriptor.fileDescriptor) {
                 self.encode(xpcValue: xpc)
             } else if #available(macOS 11.0, *),
-                      let fileDescriptor = value as? FileDescriptor,
-                      let xpc = xpc_fd_create(fileDescriptor.rawValue) {
+                let fileDescriptor = value as? FileDescriptor,
+                let xpc = xpc_fd_create(fileDescriptor.rawValue)
+            {
                 self.encode(xpcValue: xpc)
             } else if let endpoint = value as? XPCEndpoint {
                 self.encode(xpcValue: endpoint.endpoint)
@@ -416,7 +419,7 @@ public class XPCEncoder {
 
     fileprivate class _XPCEncoder: Encoder {
         let codingPath: [CodingKey]
-        var userInfo: [CodingUserInfoKey : Any] { [:] }
+        var userInfo: [CodingUserInfoKey: Any] { [:] }
         let original: xpc_object_t?
         private(set) var encodedValue: xpc_object_t? = nil
 
