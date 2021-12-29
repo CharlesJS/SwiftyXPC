@@ -515,7 +515,12 @@ public class XPCEncoder {
     public func encode<T: Encodable>(_ value: T) throws -> xpc_object_t {
         let encoder = _XPCEncoder(parentXPC: nil, codingPath: [], replyingTo: self.original)
 
-        try value.encode(to: encoder)
+        // Everything has to go througn containers so that custom catchers in the container classes will catch things like
+        // file descriptors.
+
+        var container = encoder.singleValueContainer()
+        try container.encode(value)
+
         encoder.finalize()
 
         guard let encoded = encoder.encodedValue else {
