@@ -357,7 +357,11 @@ public class XPCEncoder {
     }
 
     private class SingleValueContainer: SingleValueEncodingContainer, XPCEncodingContainer {
-        let encoder: _XPCEncoder
+        // We can use `unowned` here, because `SingleValueContainer` should only be created under these circumstances:
+        // 1. Created by `XPCEncoder.encode(_:)`, which keeps the encoder alive until after encoding is done, and:
+        // 2. Created by an `Encodable` in its implementation of `encode(to:)`, during which the encoder will remain
+        //    alive for the duration of the method, after which the `SingleValueContainer` will no longer be used.
+        unowned let encoder: _XPCEncoder
         var hasBeenEncoded = false
 
         var codingPath: [CodingKey] { self.encoder.codingPath }
