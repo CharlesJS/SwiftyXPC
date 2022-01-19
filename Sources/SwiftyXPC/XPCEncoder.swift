@@ -508,6 +508,8 @@ public class XPCEncoder {
                 container.finalize()
                 container.childContainers.forEach { $0.finalize() }
                 container.childEncoders.forEach { $0.finalize() }
+
+                self.topLevelContainer = nil
             }
         }
     }
