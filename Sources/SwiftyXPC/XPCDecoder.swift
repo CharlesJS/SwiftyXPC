@@ -271,7 +271,7 @@ public final class XPCDecoder {
 
                 return XPCFileDescriptor(fileDescriptor: xpc_fd_dup(xpc)) as! T
             } else if #available(macOS 11.0, *), type == FileDescriptor.self {
-                try checkType(xpcType: XPC_TYPE_FD, swiftType: XPCFileDescriptor.self, xpc: xpc)
+                try checkType(xpcType: XPC_TYPE_FD, swiftType: FileDescriptor.self, xpc: xpc)
 
                 return FileDescriptor(rawValue: xpc_fd_dup(xpc)) as! T
             } else if type == XPCEndpoint.self {
