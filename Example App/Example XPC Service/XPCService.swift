@@ -19,6 +19,7 @@ class XPCService {
             let serviceListener = try XPCListener(type: .service, codeSigningRequirement: requirement)
 
             serviceListener.setMessageHandler(name: CommandSet.capitalizeString, handler: xpcService.capitalizeString)
+            serviceListener.setMessageHandler(name: CommandSet.longRunningTask, handler: xpcService.longRunningTask)
 
             serviceListener.activate()
             fatalError("Should never get here")
@@ -29,5 +30,23 @@ class XPCService {
 
     private func capitalizeString(_: XPCConnection, string: String) async throws -> String {
         return string.uppercased()
+    }
+
+    private func longRunningTask(_: XPCConnection, endpoint: XPCEndpoint) async throws {
+        let remoteConnection = try XPCConnection(
+            type: .remoteServiceFromEndpoint(endpoint),
+            codeSigningRequirement: nil
+        )
+
+        remoteConnection.activate()
+
+        for i in 0...100 {
+            try await Task.sleep(for: .milliseconds(500))
+
+            try remoteConnection.sendOnewayMessage(
+                name: LongRunningTaskMessage.progressNotification,
+                message: Double(i) / 100.0
+            )
+        }
     }
 }

@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		288C50152AD8C2A7000DD185 /* SwiftyXPC in Frameworks */ = {isa = PBXBuildFile; productRef = 288C50142AD8C2A7000DD185 /* SwiftyXPC */; };
+		28AD8F6A2ADA5DBB00EAB83A /* SwiftyXPC in Frameworks */ = {isa = PBXBuildFile; productRef = 28AD8F692ADA5DBB00EAB83A /* SwiftyXPC */; };
 		28F54817282486160069100A /* Example_App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F54816282486160069100A /* Example_App.swift */; };
 		28F54819282486160069100A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F54818282486160069100A /* ContentView.swift */; };
-		28F548272824868F0069100A /* SwiftyXPC in Frameworks */ = {isa = PBXBuildFile; productRef = 28F548262824868F0069100A /* SwiftyXPC */; };
 		28F54837282486B60069100A /* Example XPC Service.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = 28F5482C282486B60069100A /* Example XPC Service.xpc */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		28F5483E282486D20069100A /* SwiftyXPC in Frameworks */ = {isa = PBXBuildFile; productRef = 28F5483D282486D20069100A /* SwiftyXPC */; };
 		28F54840282487910069100A /* XPCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F5483F282487910069100A /* XPCService.swift */; };
 		28F54843282489E60069100A /* CommandSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F54842282489E60069100A /* CommandSet.swift */; };
 		28F5484428248D3D0069100A /* CommandSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F54842282489E60069100A /* CommandSet.swift */; };
@@ -61,7 +61,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				28F548272824868F0069100A /* SwiftyXPC in Frameworks */,
+				28AD8F6A2ADA5DBB00EAB83A /* SwiftyXPC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -69,7 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				28F5483E282486D20069100A /* SwiftyXPC in Frameworks */,
+				288C50152AD8C2A7000DD185 /* SwiftyXPC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,7 +143,7 @@
 			);
 			name = "Example App";
 			packageProductDependencies = (
-				28F548262824868F0069100A /* SwiftyXPC */,
+				28AD8F692ADA5DBB00EAB83A /* SwiftyXPC */,
 			);
 			productName = "Example App";
 			productReference = 28F54813282486160069100A /* Example App.app */;
@@ -160,10 +160,11 @@
 			buildRules = (
 			);
 			dependencies = (
+				28AD8F682ADA5DA500EAB83A /* PBXTargetDependency */,
 			);
 			name = "Example XPC Service";
 			packageProductDependencies = (
-				28F5483D282486D20069100A /* SwiftyXPC */,
+				288C50142AD8C2A7000DD185 /* SwiftyXPC */,
 			);
 			productName = "Example XPC Service";
 			productReference = 28F5482C282486B60069100A /* Example XPC Service.xpc */;
@@ -198,7 +199,7 @@
 			);
 			mainGroup = 28F5480A282486160069100A;
 			packageReferences = (
-				28F548252824868F0069100A /* XCRemoteSwiftPackageReference "SwiftyXPC" */,
+				28AD8F642ADA5D8F00EAB83A /* XCRemoteSwiftPackageReference "SwiftyXPC" */,
 			);
 			productRefGroup = 28F54814282486160069100A /* Products */;
 			projectDirPath = "";
@@ -252,6 +253,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		28AD8F682ADA5DA500EAB83A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 28AD8F672ADA5DA500EAB83A /* SwiftyXPC */;
+		};
 		28F54836282486B60069100A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 28F5482B282486B60069100A /* Example XPC Service */;
@@ -310,7 +315,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -364,7 +369,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -515,25 +520,29 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		28F548252824868F0069100A /* XCRemoteSwiftPackageReference "SwiftyXPC" */ = {
+		28AD8F642ADA5D8F00EAB83A /* XCRemoteSwiftPackageReference "SwiftyXPC" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/CharlesJS/SwiftyXPC";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.5.0;
+				minimumVersion = 0.5.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		28F548262824868F0069100A /* SwiftyXPC */ = {
+		288C50142AD8C2A7000DD185 /* SwiftyXPC */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 28F548252824868F0069100A /* XCRemoteSwiftPackageReference "SwiftyXPC" */;
 			productName = SwiftyXPC;
 		};
-		28F5483D282486D20069100A /* SwiftyXPC */ = {
+		28AD8F672ADA5DA500EAB83A /* SwiftyXPC */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 28F548252824868F0069100A /* XCRemoteSwiftPackageReference "SwiftyXPC" */;
+			package = 28AD8F642ADA5D8F00EAB83A /* XCRemoteSwiftPackageReference "SwiftyXPC" */;
+			productName = SwiftyXPC;
+		};
+		28AD8F692ADA5DBB00EAB83A /* SwiftyXPC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 28AD8F642ADA5D8F00EAB83A /* XCRemoteSwiftPackageReference "SwiftyXPC" */;
 			productName = SwiftyXPC;
 		};
 /* End XCSwiftPackageProductDependency section */

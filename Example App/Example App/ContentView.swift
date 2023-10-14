@@ -11,6 +11,7 @@ import SwiftyXPC
 struct ContentView: View {
     @State var request = "hello world"
     @State var response = ""
+    @State var progress: Double? = nil
 
     var body: some View {
         VStack {
@@ -32,8 +33,27 @@ struct ContentView: View {
                         self.response = "Error: \(error.localizedDescription)"
                     }
                 }
+            }
+            Button("Start Long-Running-Task") {
+                Task {
+                    do {
+                        self.response = NSLocalizedString("Please Wait…", comment: "Please Wait...")
+
+                        try await MessageSender.shared.startLongRunningTask() {
+                            self.progress = $0
+                        }
+
+                        self.response = NSLocalizedString("Done!", comment: "Done message")
+                    } catch {
+                        self.response = "Error: \(error.localizedDescription)"
+                    }
+                }
             }.padding()
-        }
+
+            ProgressView(value: self.progress, total: 1.0)
+                .progressViewStyle(.linear)
+                .opacity(self.progress != nil ? 1.0 : 0.0)
+        }.padding()
     }
 }
 

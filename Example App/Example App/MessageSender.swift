@@ -34,4 +34,23 @@ actor MessageSender {
 
         return try await self.connection.sendMessage(name: CommandSet.capitalizeString, request: string)
     }
+
+    func startLongRunningTask(callback: @escaping (Double?) -> Void) async throws {
+        self.messageSendInProgress = true
+        defer { self.messageSendInProgress = false }
+
+        let listener = try XPCListener(type: .anonymous, codeSigningRequirement: nil) // don't actually use nil
+
+        listener.setMessageHandler(name: LongRunningTaskMessage.progressNotification) { (_, progress: Double) in
+            callback(progress)
+        }
+
+        listener.activate()
+        listener.errorHandler = {
+            callback(nil)
+            print("something went wrong: \($1)")
+        }
+
+        try await self.connection.sendMessage(name: CommandSet.longRunningTask, request: listener.endpoint)
+    }
 }
