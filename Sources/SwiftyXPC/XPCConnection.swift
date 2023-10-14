@@ -326,7 +326,11 @@ public class XPCConnection {
                         throw Error.missingMessageBody
                     }
 
-                    continuation.resume(returning: try XPCDecoder().decode(type: Response.self, from: body))
+                    if Response.self == XPCNull.self {
+                        continuation.resume(returning: XPCNull() as! Response)
+                    } else {
+                        continuation.resume(returning: try XPCDecoder().decode(type: Response.self, from: body))
+                    }
                 } catch {
                     continuation.resume(throwing: error)
                 }
