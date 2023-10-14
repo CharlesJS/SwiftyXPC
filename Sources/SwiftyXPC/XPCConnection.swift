@@ -345,7 +345,7 @@ public class XPCConnection {
     ///   - name: A name uniquely identifying the message. This must match the name that the receiving connection has passed to `setMessage(name:handler:)`.
     ///
     /// - Throws: Any communication errors that occur in the process of sending the message.
-    public func sendOnewayMessage<Message: Codable>(message: Message, name: String? = nil) throws {
+    public func sendOnewayMessage<Message: Codable>(name: String? = nil, message: Message) throws {
         try self.sendOnewayRawMessage(name: name, body: XPCEncoder().encode(message), key: MessageKeys.body, asReplyTo: nil)
     }
 
@@ -527,5 +527,10 @@ public class XPCConnection {
                 self.errorHandler?(self, error)
             }
         }
+    }
+
+    @available(*, deprecated, message: "Use sendOnewayMessage(name:message:) instead")
+    public func sendOnewayMessage<Message: Codable>(message: Message, name: String?) throws {
+        try self.sendOnewayMessage(name: name, message: message)
     }
 }
