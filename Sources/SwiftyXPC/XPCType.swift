@@ -8,7 +8,7 @@
 import XPC
 
 /// Enum representing the type of an XPC object.
-public enum XPCType: Codable {
+public enum XPCType: Codable, Sendable {
     case activity
     case array
     case bool

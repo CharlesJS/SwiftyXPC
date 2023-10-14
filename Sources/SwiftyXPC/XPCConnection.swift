@@ -9,7 +9,7 @@ import XPC
 /// Use the `sendMessage` family of functions to send messages to the remote process, and `setMessageHandler(name:handler:)` to receive them.
 ///
 /// The connection must receive `.activate()` before it can send or receive any messages.
-public class XPCConnection {
+public class XPCConnection: @unchecked Sendable {
     /// Errors specific to `XPCConnection`.
     public enum Error: Swift.Error, Codable {
         /// An XPC message was missing its name.
@@ -494,24 +494,32 @@ public class XPCConnection {
     }
 
     private func respond(to event: xpc_object_t) {
-        let messageHandler: MessageHandler.RawHandler
-
-        do {
-            guard let name = xpc_dictionary_get_value(event, MessageKeys.name).flatMap({ String($0) }) else {
-                throw Error.missingMessageName
-            }
-
-            guard let _messageHandler = self.getMessageHandler(forName: name) else {
-                throw Error.unexpectedMessage
-            }
-
-            messageHandler = _messageHandler
-        } catch {
-            self.errorHandler?(self, error)
-            return
+        struct SendableWrapper: @unchecked Sendable {
+            let event: xpc_object_t
         }
 
+        let wrapper = SendableWrapper(event: event)
+
         Task {
+            let event = wrapper.event
+
+            let messageHandler: MessageHandler.RawHandler
+
+            do {
+                guard let name = xpc_dictionary_get_value(event, MessageKeys.name).flatMap({ String($0) }) else {
+                    throw Error.missingMessageName
+                }
+
+                guard let _messageHandler = self.getMessageHandler(forName: name) else {
+                    throw Error.unexpectedMessage
+                }
+
+                messageHandler = _messageHandler
+            } catch {
+                self.errorHandler?(self, error)
+                return
+            }
+
             let response: xpc_object_t
 
             do {
