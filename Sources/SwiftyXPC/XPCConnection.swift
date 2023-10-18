@@ -97,7 +97,15 @@ public class XPCConnection: @unchecked Sendable {
     internal convenience init(machServiceName: String, flags: Int32, codeSigningRequirement: String? = nil) throws {
         let connection = xpc_connection_create_mach_service(machServiceName, nil, UInt64(flags))
 
-        try self.init(connection: connection, codeSigningRequirement: codeSigningRequirement)
+        do {
+            try self.init(connection: connection, codeSigningRequirement: codeSigningRequirement)
+        } catch {
+            // To avoid xpc_api_misuse errors from the connection being released without having been fully initialized
+            xpc_connection_set_event_handler(connection) { _ in }
+            xpc_connection_activate(connection)
+            xpc_connection_cancel(connection)
+            throw error
+        }
     }
 
     internal init(connection: xpc_connection_t, codeSigningRequirement: String?) throws {
