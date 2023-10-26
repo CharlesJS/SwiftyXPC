@@ -66,14 +66,6 @@ public final class XPCListener {
         return self._messageHandlers
     }
 
-    private func getMessageHandler(forName name: String) -> XPCConnection.MessageHandler.RawHandler? {
-        if case .connection(let connection, let isMulti) = self.backing, !isMulti {
-            return connection.getMessageHandler(forName: name)
-        }
-
-        return self._messageHandlers[name]?.closure
-    }
-
     /// Set a message handler for an incoming message, identified by the `name` parameter, without taking any arguments or returning any value.
     ///
     /// - Parameters:
