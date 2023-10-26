@@ -1,0 +1,37 @@
+{
+  "configurations" : [
+    {
+      "id" : "FCC01CE3-8BB6-4831-B6FF-9EA386D3CC52",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : {
+      "targets" : [
+        {
+          "containerPath" : "container:",
+          "identifier" : "SwiftyXPC",
+          "name" : "SwiftyXPC"
+        }
+      ]
+    },
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:",
+      "identifier" : "TestHelper",
+      "name" : "TestHelper"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "SwiftyXPCTests",
+        "name" : "SwiftyXPCTests"
+      }
+    }
+  ],
+  "version" : 1
+}

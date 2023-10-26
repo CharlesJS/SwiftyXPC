@@ -21,9 +21,17 @@ let package = Package(
             name: "SwiftyXPC",
             dependencies: []
         ),
+        .target(
+            name: "TestShared",
+            dependencies: ["SwiftyXPC"]
+        ),
+        .executableTarget(
+            name: "TestHelper",
+            dependencies: ["SwiftyXPC", "TestShared"]
+        ),
         .testTarget(
             name: "SwiftyXPCTests",
-            dependencies: ["SwiftyXPC"]
+            dependencies: ["SwiftyXPC", "TestHelper", "TestShared"]
         ),
     ]
 )
