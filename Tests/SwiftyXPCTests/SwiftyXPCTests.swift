@@ -97,7 +97,8 @@ final class SwiftyXPCTests: XCTestCase {
             failsToSendBadData.fulfill()
         }
 
-        await fulfillment(of: [failsToSendBadData], timeout: 10.0)    }
+        await fulfillment(of: [failsToSendBadData], timeout: 10.0)
+    }
 
     func testTwoWayCommunication() async throws {
         let conn = try self.openConnection()
