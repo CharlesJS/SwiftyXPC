@@ -539,7 +539,7 @@ public class XPCEncoder {
     public func encode<T: Encodable>(_ value: T) throws -> xpc_object_t {
         let encoder = _XPCEncoder(parentXPC: nil, codingPath: [], replyingTo: self.original)
 
-        // Everything has to go througn containers so that custom catchers in the container classes will catch things like
+        // Everything has to go through containers so that custom catchers in the container classes will catch things like
         // file descriptors.
 
         var container = encoder.singleValueContainer()
