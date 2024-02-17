@@ -72,6 +72,33 @@ final class SwiftyXPCTests: XCTestCase {
         XCTAssertEqual(doubleResponse, 18.5, accuracy: 0.001)
     }
 
+    func testDataTransport() async throws {
+        let conn = try self.openConnection()
+
+        let dataInfo: DataInfo = try await conn.sendMessage(
+            name: CommandSet.transportData,
+            request: "One to beam up".data(using: .utf8)!
+        )
+
+        XCTAssertEqual(String(data: dataInfo.characterName, encoding: .utf8), "Lt. Cmdr. Data")
+        XCTAssertEqual(String(data: dataInfo.playedBy, encoding: .utf8), "Brent Spiner")
+        XCTAssertEqual(
+            dataInfo.otherCharacters.map { String(data: $0, encoding: .utf8) },
+            ["Lore", "B4", "Noonien Soong", "Arik Soong", "Altan Soong", "Adam Soong"]
+        )
+
+        XPCErrorRegistry.shared.registerDomain(forErrorType: DataInfo.DataError.self)
+        let failsToSendBadData = self.expectation(description: "Fails to send bad data")
+
+        do {
+            try await conn.sendMessage(name: CommandSet.transportData, request: "It's Lore being sneaky".data(using: .utf8)!)
+        } catch let error as DataInfo.DataError {
+            XCTAssertEqual(error.failureReason, "fluctuation in the positronic matrix")
+            failsToSendBadData.fulfill()
+        }
+
+        await fulfillment(of: [failsToSendBadData], timeout: 10.0)    }
+
     func testTwoWayCommunication() async throws {
         let conn = try self.openConnection()
 

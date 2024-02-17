@@ -5,6 +5,7 @@
 //  Created by Charles Srstka on 10/12/23.
 //
 
+import Foundation
 import Dispatch
 import SwiftyXPC
 import TestShared
@@ -21,6 +22,7 @@ class XPCService {
             listener.setMessageHandler(name: CommandSet.reportIDs, handler: xpcService.reportIDs)
             listener.setMessageHandler(name: CommandSet.capitalizeString, handler: xpcService.capitalizeString)
             listener.setMessageHandler(name: CommandSet.multiplyBy5, handler: xpcService.multiplyBy5)
+            listener.setMessageHandler(name: CommandSet.transportData, handler: xpcService.transportData)
             listener.setMessageHandler(name: CommandSet.tellAJoke, handler: xpcService.tellAJoke)
             listener.setMessageHandler(name: CommandSet.pauseOneSecond, handler: xpcService.pauseOneSecond)
 
@@ -41,6 +43,25 @@ class XPCService {
 
     private func multiplyBy5(_: XPCConnection, number: Double) async throws -> Double {
         number * 5.0
+    }
+
+    private func transportData(_: XPCConnection, data: Data) async throws -> DataInfo {
+        guard String(data: data, encoding: .utf8) == "One to beam up" else {
+            throw DataInfo.DataError(failureReason: "fluctuation in the positronic matrix")
+        }
+
+        return DataInfo(
+            characterName: "Lt. Cmdr. Data".data(using: .utf8)!,
+            playedBy: "Brent Spiner".data(using: .utf8)!,
+            otherCharacters: [
+                "Lore".data(using: .utf8)!,
+                "B4".data(using: .utf8)!,
+                "Noonien Soong".data(using: .utf8)!,
+                "Arik Soong".data(using: .utf8)!,
+                "Altan Soong".data(using: .utf8)!,
+                "Adam Soong".data(using: .utf8)!
+            ]
+        )
     }
 
     private func tellAJoke(_: XPCConnection, endpoint: XPCEndpoint) async throws {
