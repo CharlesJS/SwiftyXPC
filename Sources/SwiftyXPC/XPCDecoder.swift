@@ -9,6 +9,7 @@ import XPC
 
 private protocol XPCDecodingContainer {
     var codingPath: [CodingKey] { get }
+    var error: Error? { get }
 }
 extension XPCDecodingContainer {
     fileprivate func makeErrorContext(description: String, underlyingError: Error? = nil) -> DecodingError.Context {
@@ -87,6 +88,7 @@ public final class XPCDecoder {
     private final class KeyedContainer<Key: CodingKey>: KeyedDecodingContainerProtocol, XPCDecodingContainer {
         let dict: xpc_object_t
         let codingPath: [CodingKey]
+        var error: Error? { nil }
 
         private var checkedType = false
 
@@ -342,6 +344,15 @@ public final class XPCDecoder {
         var isAtEnd: Bool { self.currentIndex >= (self.count ?? 0) }
         private(set) var currentIndex: Int
 
+        var error: Error? {
+            switch self.storage {
+            case .error(let error):
+                return error
+            default:
+                return nil
+            }
+        }
+
         init(wrapping dict: xpc_object_t, codingPath: [CodingKey]) {
             self.dict = dict
             self.codingPath = codingPath
@@ -566,6 +577,7 @@ public final class XPCDecoder {
     private final class SingleValueContainer: SingleValueDecodingContainer, XPCDecodingContainer {
         let codingPath: [CodingKey]
         let xpc: xpc_object_t
+        var error: Error? { nil }
 
         init(wrapping xpc: xpc_object_t, codingPath: [CodingKey]) {
             self.codingPath = codingPath
@@ -614,7 +626,14 @@ public final class XPCDecoder {
 
                 return XPCNull.shared as! T
             } else {
-                return try T.init(from: _XPCDecoder(xpc: self.xpc, codingPath: self.codingPath))
+                let decoder = _XPCDecoder(xpc: self.xpc, codingPath: self.codingPath)
+                let value = try T.init(from: decoder)
+
+                if let error = decoder.topLevelContainer?.error {
+                    throw error
+                }
+
+                return value
             }
         }
     }
@@ -623,7 +642,7 @@ public final class XPCDecoder {
         let xpc: xpc_object_t
         let codingPath: [CodingKey]
         var userInfo: [CodingUserInfoKey: Any] { [:] }
-        private var hasCreatedContainer = false
+        var topLevelContainer: XPCDecodingContainer? = nil
 
         init(xpc: xpc_object_t, codingPath: [CodingKey]) {
             self.xpc = xpc
@@ -631,24 +650,30 @@ public final class XPCDecoder {
         }
 
         func container<Key: CodingKey>(keyedBy type: Key.Type) -> KeyedDecodingContainer<Key> {
-            precondition(!self.hasCreatedContainer, "Can only have one top-level container")
-            defer { self.hasCreatedContainer = true }
+            precondition(self.topLevelContainer == nil, "Can only have one top-level container")
 
-            return KeyedDecodingContainer(KeyedContainer<Key>(wrapping: self.xpc, codingPath: self.codingPath))
+            let container = KeyedContainer<Key>(wrapping: self.xpc, codingPath: self.codingPath)
+            self.topLevelContainer = container
+
+            return KeyedDecodingContainer(container)
         }
 
         func unkeyedContainer() -> UnkeyedDecodingContainer {
-            precondition(!self.hasCreatedContainer, "Can only have one top-level container")
-            defer { self.hasCreatedContainer = true }
+            precondition(self.topLevelContainer == nil, "Can only have one top-level container")
 
-            return UnkeyedContainer(wrapping: self.xpc, codingPath: self.codingPath)
+            let container = UnkeyedContainer(wrapping: self.xpc, codingPath: self.codingPath)
+            self.topLevelContainer = container
+
+            return container
         }
 
         func singleValueContainer() -> SingleValueDecodingContainer {
-            precondition(!self.hasCreatedContainer, "Can only have one top-level container")
-            defer { self.hasCreatedContainer = true }
+            precondition(self.topLevelContainer == nil, "Can only have one top-level container")
 
-            return SingleValueContainer(wrapping: self.xpc, codingPath: self.codingPath)
+            let container = SingleValueContainer(wrapping: self.xpc, codingPath: self.codingPath)
+            self.topLevelContainer = container
+
+            return container
         }
     }
 
