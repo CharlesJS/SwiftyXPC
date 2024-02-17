@@ -285,7 +285,7 @@ public final class XPCDecoder {
 
                 return XPCNull.shared as! T
             } else {
-                return try type.init(from: _XPCDecoder(xpc: xpc, codingPath: codingPath))
+                return try _XPCDecoder(xpc: xpc, codingPath: codingPath).decodeTopLevelObject()
             }
         }
 
@@ -322,7 +322,7 @@ public final class XPCDecoder {
     private final class UnkeyedContainer: UnkeyedDecodingContainer, XPCDecodingContainer {
         private enum Storage {
             case array(xpc_object_t)
-            case data([UInt8])
+            case data(ContiguousArray<UInt8>)
             case error(Error)
         }
 
@@ -379,17 +379,19 @@ public final class XPCDecoder {
                     self.storage = .array(xpc)
                 case XPC_TYPE_DATA:
                     let length = xpc_data_get_length(xpc)
-                    var bytes = [UInt8].init(repeating: 0, count: length)
-
-                    try bytes.withUnsafeMutableBytes {
-                        let bytesCopied = xpc_data_get_bytes(xpc, $0.baseAddress!, 0, length)
-
-                        if bytesCopied != length {
-                            let description = "Couldn't read data for unknown reason"
-                            let context = DecodingError.Context(codingPath: codingPath, debugDescription: description)
-
-                            throw DecodingError.dataCorrupted(context)
+                    let bytes = ContiguousArray<UInt8>(unsafeUninitializedCapacity: length) { buffer, count in
+                        if let ptr = buffer.baseAddress {
+                            count = xpc_data_get_bytes(xpc, ptr, 0, length)
+                        } else {
+                            count = 0
                         }
+                    }
+
+                    if bytes.count != length {
+                        let description = "Couldn't read data for unknown reason"
+                        let context = DecodingError.Context(codingPath: codingPath, debugDescription: description)
+
+                        throw DecodingError.dataCorrupted(context)
                     }
 
                     self.storage = .data(bytes)
@@ -538,7 +540,7 @@ public final class XPCDecoder {
                 let codingPath = self.nextCodingPath()
                 let xpc = try self.readNext(xpcType: nil, swiftType: type)
 
-                return try type.init(from: _XPCDecoder(xpc: xpc, codingPath: codingPath))
+                return try _XPCDecoder(xpc: xpc, codingPath: codingPath).decodeTopLevelObject()
             }
         }
 
@@ -626,14 +628,7 @@ public final class XPCDecoder {
 
                 return XPCNull.shared as! T
             } else {
-                let decoder = _XPCDecoder(xpc: self.xpc, codingPath: self.codingPath)
-                let value = try T.init(from: decoder)
-
-                if let error = decoder.topLevelContainer?.error {
-                    throw error
-                }
-
-                return value
+                return try _XPCDecoder(xpc: self.xpc, codingPath: self.codingPath).decodeTopLevelObject()
             }
         }
     }
@@ -647,6 +642,29 @@ public final class XPCDecoder {
         init(xpc: xpc_object_t, codingPath: [CodingKey]) {
             self.xpc = xpc
             self.codingPath = codingPath
+        }
+
+        func decodeTopLevelObject<T: Decodable>() throws -> T {
+            if #available(macOS 13.0, *),
+               xpc_get_type(self.xpc) == XPC_TYPE_DICTIONARY,
+               let content = xpc_dictionary_get_value(self.xpc, XPCEncoder.UnkeyedContainerDictionaryKeys.contents),
+               xpc_get_type(content) == XPC_TYPE_DATA,
+               let bytes = T.self as? any RangeReplaceableCollection<UInt8>.Type {
+                let buffer = UnsafeRawBufferPointer(
+                    start: xpc_data_get_bytes_ptr(content),
+                    count: xpc_data_get_length(content)
+                )
+
+                return bytes.init(buffer) as! T
+            }
+
+            let value = try T.init(from: self)
+
+            if let error = self.topLevelContainer?.error {
+                throw error
+            }
+
+            return value
         }
 
         func container<Key: CodingKey>(keyedBy type: Key.Type) -> KeyedDecodingContainer<Key> {

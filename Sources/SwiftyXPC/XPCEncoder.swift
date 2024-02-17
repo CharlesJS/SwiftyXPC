@@ -160,17 +160,20 @@ public class XPCEncoder {
     private class UnkeyedContainer: UnkeyedEncodingContainer, XPCEncodingContainer {
         private enum Storage {
             class ByteStorage {
-                var bytes: [UInt8]
-                var signedBytes: [Int8] { self.bytes.map { Int8(bitPattern: $0) } }
+                var bytes: ContiguousArray<UInt8>
                 let isSigned: Bool
 
-                init(bytes: [UInt8]) {
+                init(bytes: ContiguousArray<UInt8>) {
                     self.bytes = bytes
                     self.isSigned = false
                 }
 
-                init(bytes: [Int8]) {
-                    self.bytes = bytes.map { UInt8(bitPattern: $0) }
+                init(bytes: ContiguousArray<Int8>) {
+                    self.bytes = ContiguousArray<UInt8>.init(unsafeUninitializedCapacity: bytes.count) { buffer, count in
+                        _ = buffer.withMemoryRebound(to: Int8.self) { $0.initialize(fromContentsOf: bytes) }
+                        count = bytes.count
+                    }
+
                     self.isSigned = true
                 }
             }
@@ -219,7 +222,7 @@ public class XPCEncoder {
             case .bytes(let byteStorage):
                 var byteArray: [xpc_object_t]
                 if byteStorage.isSigned {
-                    byteArray = byteStorage.signedBytes.map { self.encodeInteger($0) }
+                    byteArray = byteStorage.bytes.map { self.encodeInteger(Int8(bitPattern: $0)) }
                 } else {
                     byteArray = byteStorage.bytes.map { self.encodeInteger($0) }
                 }
@@ -269,6 +272,19 @@ public class XPCEncoder {
         func encode(_ value: UInt16) throws { self.encode(xpcValue: self.encodeInteger(value)) }
         func encode(_ value: UInt32) throws { self.encode(xpcValue: self.encodeInteger(value)) }
         func encode(_ value: UInt64) throws { self.encode(xpcValue: self.encodeInteger(value)) }
+
+        func encode(contentsOf sequence: some Sequence<UInt8>) throws {
+            switch self.storage {
+            case .empty:
+                self.storage = .bytes(.init(bytes: ContiguousArray(sequence)))
+            case .bytes(let byteStorage) where !byteStorage.isSigned:
+                byteStorage.bytes.append(contentsOf: sequence)
+            default:
+                for eachByte in sequence {
+                    self.encode(xpcValue: self.encodeInteger(eachByte))
+                }
+            }
+        }
 
         func encode<T: Encodable>(_ value: T) throws {
             let codingPath = self.nextCodingPath()
