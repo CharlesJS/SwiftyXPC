@@ -9,7 +9,7 @@ import XPC
 ///     extension XPCError: LocalizedError {}
 ///
 /// However, this default implementation is not guaranteed to be correctly localized.
-public enum XPCError: Error, Codable {
+public enum XPCError: Error, Codable, Sendable {
     /// Will be delivered to the connection’s error handler if the remote service exited.
     /// The connection is still live even in this case, and resending a message will cause the service to be launched on-demand.
     /// This error serves as a client’s indication that it should resynchronize any state that it had given the service.

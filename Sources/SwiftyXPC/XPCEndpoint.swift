@@ -11,7 +11,7 @@ import XPC
 ///
 /// An `XPCEndpoint` can be passed over an active XPC connection, allowing the process on the other end to initialize a new `XPCConnection`
 /// to communicate with it.
-public struct XPCEndpoint: Codable {
+public struct XPCEndpoint: Codable, @unchecked Sendable {
     private struct CanOnlyBeDecodedByXPCDecoder: Error {
         var localizedDescription: String { "XPCEndpoint can only be decoded via XPCDecoder." }
     }
